@@ -68,6 +68,23 @@ With no `-config`, cantord still runs with built-in defaults (`~/.local/share/ca
 but `library.music_dirs` has no sane default and must be set via a config
 file.
 
+### Debugging
+
+Logging defaults to Info (startup, scan progress, warnings/errors). For
+verbose tracing — every HTTP request and every mpv IPC command/response/
+event — pass `-log-level debug` or set `$CANTORD_LOG_LEVEL=debug`:
+
+```sh
+cantord -config ~/.config/cantord/cantord.toml -log-level debug
+# or
+CANTORD_LOG_LEVEL=debug cantord -config ~/.config/cantord/cantord.toml
+```
+
+Debug output is what you want when playback isn't behaving as expected —
+it shows the exact mpv commands cantord is sending and mpv's property-
+change events coming back, which is usually enough to tell whether the
+problem is in cantord's queue logic or in mpv/the audio device itself.
+
 ## CLI client
 
 `cantordctl` is a small standalone client for the HTTP API — useful for

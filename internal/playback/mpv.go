@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
@@ -127,6 +128,7 @@ func (c *Client) readLoop() {
 
 		var ev RawEvent
 		if err := json.Unmarshal(line, &ev); err == nil && ev["event"] != nil {
+			slog.Debug("mpv: event", "event", ev)
 			select {
 			case c.events <- ev:
 			default: // slow consumer: drop rather than block mpv's IPC
@@ -154,12 +156,14 @@ func (c *Client) Command(args ...any) (json.RawMessage, error) {
 	}
 	payload = append(payload, '\n')
 
+	slog.Debug("mpv: command", "args", args)
 	if _, err := c.conn.Write(payload); err != nil {
 		return nil, fmt.Errorf("writing mpv command: %w", err)
 	}
 
 	select {
 	case data := <-ch:
+		slog.Debug("mpv: response", "args", args, "data", string(data))
 		return data, nil
 	case <-time.After(10 * time.Second):
 		return nil, fmt.Errorf("mpv command timed out: %v", args)

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,7 +25,12 @@ import (
 
 func main() {
 	configPath := flag.String("config", "", "path to cantord.toml (optional; built-in defaults are used otherwise)")
+	logLevel := flag.String("log-level", "", "log level: debug, info, warn, error (default info; also settable via $CANTORD_LOG_LEVEL)")
 	flag.Parse()
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: parseLogLevel(*logLevel),
+	})))
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {
@@ -103,4 +109,21 @@ func ffprobePath() string {
 		return p
 	}
 	return "ffprobe"
+}
+
+func parseLogLevel(flagValue string) slog.Level {
+	v := flagValue
+	if v == "" {
+		v = os.Getenv("CANTORD_LOG_LEVEL")
+	}
+	switch strings.ToLower(v) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
 }
