@@ -62,6 +62,20 @@ func (s *Server) listAlbumTracks(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, tracks)
 }
 
+func (s *Server) getTrack(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	track, found, err := s.lib.GetTrack(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if !found {
+		writeError(w, http.StatusNotFound, fmt.Errorf("track %s not found", id))
+		return
+	}
+	writeJSON(w, http.StatusOK, track)
+}
+
 func (s *Server) getArt(w http.ResponseWriter, r *http.Request) {
 	hash := r.PathValue("hash")
 	size := r.URL.Query().Get("size")

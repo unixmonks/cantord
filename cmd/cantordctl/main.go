@@ -20,6 +20,7 @@ func init() {
 		"artists":         {cmdArtists, "artists"},
 		"albums":          {cmdAlbums, "albums [-letter A] [-cursor C] [-limit N] [-all]"},
 		"tracks":          {cmdTracks, "tracks <album_id>"},
+		"track":           {cmdTrack, "track <track_id>   (resolve a bare track ID)"},
 		"find":            {cmdFind, "find <query>   (searches album/artist names)"},
 		"status":          {cmdStatus, "status"},
 		"np":              {cmdStatus, "np             (alias for status)"},
@@ -50,7 +51,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "\nServer defaults to $CANTORD_ADDR or http://localhost:8080")
 	fmt.Fprintln(os.Stderr, "\nCommands:")
 	for _, name := range []string{
-		"artists", "albums", "tracks", "find",
+		"artists", "albums", "tracks", "track", "find",
 		"status", "np", "queue",
 		"play", "play-album", "pause", "stop", "next", "prev", "seek", "volume",
 		"clear", "remove", "playidx",

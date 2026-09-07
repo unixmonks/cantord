@@ -122,6 +122,7 @@ All endpoints are JSON in/out except `/art/{hash}`.
 | GET | `/api/albums/index` | `{"A": cursor, "B": cursor, ...}` for jump-to-letter |
 | GET | `/api/albums/{id}` | Album detail |
 | GET | `/api/albums/{id}/tracks` | Tracks in an album |
+| GET | `/api/tracks/{id}` | Resolve a bare track ID (e.g. from a saved playlist) to its metadata |
 | GET | `/art/{hash}?size=thumb\|full` | Album art (immutable-cacheable) |
 | GET | `/api/queue` | Current play queue |
 | POST | `/api/queue` `{track_id}` | Enqueue (plays immediately if queue was empty) |
@@ -157,3 +158,5 @@ Not built yet (documented as the obvious next steps, not silently missing):
 - Saved-playlist ordering edits (only whole-playlist save/replace exists)
 - Multi-user auth/permissions — currently a single trusted local API
 - Output device enumeration/selection API (device is config-only for now)
+- Search — `cantordctl find` is a client-side substring filter over album/
+  artist names only; there's no server-side or track-title search yet

@@ -89,6 +89,23 @@ func cmdTracks(c *Client, args []string) error {
 	return w.Flush()
 }
 
+func cmdTrack(c *Client, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: cantordctl track <track_id>")
+	}
+	var t Track
+	if err := c.get("/api/tracks/"+args[0], &t); err != nil {
+		return err
+	}
+	format := t.Codec
+	if t.SampleRate > 0 {
+		format = fmt.Sprintf("%s %dHz/%dbit", t.Codec, t.SampleRate, t.BitDepth)
+	}
+	fmt.Printf("%s — %s\nalbum:    %s\nduration: %s\nformat:   %s\npath:     %s\n",
+		t.Artist, t.Title, t.Album, formatDuration(t.DurationMS), format, t.Path)
+	return nil
+}
+
 // find is a client-side convenience: cantord has no /search endpoint, so
 // this pages through every album and filters locally. Fine at personal-
 // library scale; not meant for huge collections.

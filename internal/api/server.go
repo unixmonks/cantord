@@ -35,6 +35,7 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("GET /api/albums/index", s.albumIndex)
 	mux.HandleFunc("GET /api/albums/{id}", s.getAlbum)
 	mux.HandleFunc("GET /api/albums/{id}/tracks", s.listAlbumTracks)
+	mux.HandleFunc("GET /api/tracks/{id}", s.getTrack)
 
 	mux.HandleFunc("GET /art/{hash}", s.getArt)
 
