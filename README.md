@@ -27,6 +27,11 @@ queueing, library browsing, and album art — for any frontend to build on.
   eventually run out-of-process (e.g. behind `hashicorp/go-plugin`/gRPC)
   behind the same `Provider` interface; that boundary is in place, the
   out-of-process loader isn't built yet.
+- **Scan progress:** the HTTP server comes up *before* the initial library
+  scan runs, so `GET /api/library/scan/status` and the `scan_progress` SSE
+  event are live from daemon start — a large library's first scan isn't a
+  silent black box. A fast stat-only pre-pass gives a `total` count so
+  progress can be reported as N of M, not just a running counter.
 - **Filesystem watching:** `fsnotify` (inotify on Linux, kqueue on FreeBSD —
   one code path for both) triggers a debounced incremental rescan on
   change. Rescans skip any file whose size/mtime hasn't changed.
@@ -85,8 +90,9 @@ All endpoints are JSON in/out except `/art/{hash}`.
 | POST | `/api/playback/volume` `{volume}` | 0-100 |
 | GET/POST | `/api/playlists` | List / save a named playlist |
 | GET/DELETE | `/api/playlists/{name}` | Load / delete a named playlist |
-| POST | `/api/library/scan` | Trigger a rescan (async; watch `/api/events`) |
-| GET | `/api/events` | SSE: `status`, `queue_changed`, `library_changed`, `art_updated` |
+| POST | `/api/library/scan` | Trigger a rescan (async; watch `/api/events` or poll status below) |
+| GET | `/api/library/scan/status` | Poll-friendly scan progress: `{running, total, processed, added_or_updated, skipped_unchanged, failed, current_path}` |
+| GET | `/api/events` | SSE: `status`, `queue_changed`, `library_changed`, `scan_progress`, `art_updated` |
 
 ## What's implemented vs. not
 

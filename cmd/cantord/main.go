@@ -49,22 +49,11 @@ func main() {
 	}
 
 	bus := events.NewBus()
-
 	scanner := library.NewScanner(lib, artStore, bus, ffprobePath(), cfg.Library.MusicDirs)
-	if err := scanner.Scan(ctx); err != nil {
-		slog.Error("initial library scan", "err", err)
-	}
-	go func() {
-		if err := scanner.Watch(ctx, 2*time.Second); err != nil {
-			slog.Warn("library watch stopped", "err", err)
-		}
-	}()
 
 	registry := art.NewRegistry(0.5)
 	registry.Register(art.NewMusicBrainzProvider("cantord/0.1 (+https://github.com/unixmonks/cantord)"))
 	enricher := enrich.New(lib, artStore, registry, bus)
-	go enricher.RunOnce(ctx)
-	go enricher.RunPeriodically(ctx, 10*time.Minute)
 
 	mpvClient, err := playback.Start(cfg.Playback.MPVPath, cfg.Playback.IPCSocket, cfg.Playback.AO, cfg.Playback.AudioDevice)
 	if err != nil {
@@ -83,6 +72,22 @@ func main() {
 			slog.Error("http server", "err", err)
 		}
 	}()
+
+	// Run the initial scan after the HTTP server is already listening, so
+	// GET /api/library/scan/status and the scan_progress SSE event are
+	// live from the moment the daemon starts — a large library's first
+	// scan can take a while and shouldn't be a black box.
+	go func() {
+		if err := scanner.Scan(ctx); err != nil {
+			slog.Error("initial library scan", "err", err)
+			return
+		}
+		enricher.RunOnce(ctx)
+		if err := scanner.Watch(ctx, 2*time.Second); err != nil {
+			slog.Warn("library watch stopped", "err", err)
+		}
+	}()
+	go enricher.RunPeriodically(ctx, 10*time.Minute)
 
 	<-ctx.Done()
 	slog.Info("shutting down")

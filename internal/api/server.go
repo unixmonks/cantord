@@ -59,6 +59,7 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("DELETE /api/playlists/{name}", s.deletePlaylist)
 
 	mux.HandleFunc("POST /api/library/scan", s.triggerScan)
+	mux.HandleFunc("GET /api/library/scan/status", s.scanStatus)
 	mux.HandleFunc("GET /api/events", s.streamEvents)
 
 	return withLogging(mux)

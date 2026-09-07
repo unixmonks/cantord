@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"cantord/internal/art"
 	"cantord/internal/events"
@@ -18,26 +20,93 @@ var audioExtensions = map[string]bool{
 	".wma": true,
 }
 
+// ScanProgress is a snapshot of an in-progress (or last completed) scan,
+// polled via GET /api/library/scan/status and pushed as the scan_progress
+// SSE event.
+type ScanProgress struct {
+	Running        bool   `json:"running"`
+	Total          int    `json:"total"`
+	Processed      int    `json:"processed"`
+	AddedOrUpdated int    `json:"added_or_updated"`
+	Skipped        int    `json:"skipped_unchanged"`
+	Removed        int    `json:"removed"`
+	Failed         int    `json:"failed"`
+	CurrentPath    string `json:"current_path,omitempty"`
+}
+
 type Scanner struct {
 	store       *Store
 	artStore    *art.Store
 	bus         *events.Bus
 	ffprobePath string
 	musicDirs   []string
+
+	mu       sync.Mutex
+	progress ScanProgress
 }
 
 func NewScanner(store *Store, artStore *art.Store, bus *events.Bus, ffprobePath string, musicDirs []string) *Scanner {
 	return &Scanner{store: store, artStore: artStore, bus: bus, ffprobePath: ffprobePath, musicDirs: musicDirs}
 }
 
+// Progress returns a snapshot of the current (or most recently finished) scan.
+func (sc *Scanner) Progress() ScanProgress {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+	return sc.progress
+}
+
+func (sc *Scanner) setProgress(mutate func(*ScanProgress)) ScanProgress {
+	sc.mu.Lock()
+	mutate(&sc.progress)
+	snapshot := sc.progress
+	sc.mu.Unlock()
+	return snapshot
+}
+
+// countAudioFiles is a fast pass (stat only, no tags/ffprobe) so the real
+// scan can report "processed N of Total" instead of just a running count.
+func (sc *Scanner) countAudioFiles() int {
+	total := 0
+	for _, root := range sc.musicDirs {
+		_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			if audioExtensions[strings.ToLower(filepath.Ext(path))] {
+				total++
+			}
+			return nil
+		})
+	}
+	return total
+}
+
 // Scan walks the configured music directories, upserting any new or
 // changed track into the library store (unchanged files, by size+mtime,
 // are skipped without re-reading tags or re-probing) and removing rows for
-// files that no longer exist.
+// files that no longer exist. Progress is logged periodically, published
+// on the event bus as scan_progress, and available via Progress().
 func (sc *Scanner) Scan(ctx context.Context) error {
-	slog.Info("scan: starting", "dirs", sc.musicDirs)
+	total := sc.countAudioFiles()
+	slog.Info("scan: starting", "dirs", sc.musicDirs, "total_files", total)
+	sc.setProgress(func(p *ScanProgress) {
+		*p = ScanProgress{Running: true, Total: total}
+	})
+
 	seen := map[string]bool{}
-	var added, skipped, failed int
+	lastReport := time.Now()
+
+	report := func(force bool) {
+		if !force && time.Since(lastReport) < 500*time.Millisecond {
+			return
+		}
+		lastReport = time.Now()
+		snap := sc.Progress()
+		slog.Info("scan: progress", "processed", snap.Processed, "total", snap.Total,
+			"added_or_updated", snap.AddedOrUpdated, "skipped_unchanged", snap.Skipped, "failed", snap.Failed)
+		sc.bus.Publish(events.Event{Type: "scan_progress", Data: snap})
+	}
 
 	for _, root := range sc.musicDirs {
 		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -55,23 +124,27 @@ func (sc *Scanner) Scan(ctx context.Context) error {
 
 			info, err := d.Info()
 			if err != nil {
-				failed++
+				sc.setProgress(func(p *ScanProgress) { p.Processed++; p.Failed++; p.CurrentPath = path })
+				report(false)
 				return nil
 			}
 			size := info.Size()
 			mtime := info.ModTime().Unix()
 
 			if pSize, pMTime, found := sc.store.TrackFingerprint(path); found && pSize == size && pMTime == mtime {
-				skipped++
+				sc.setProgress(func(p *ScanProgress) { p.Processed++; p.Skipped++; p.CurrentPath = path })
+				report(false)
 				return nil
 			}
 
 			if err := sc.processFile(ctx, path, size, mtime); err != nil {
 				slog.Warn("scan: processing file", "path", path, "err", err)
-				failed++
+				sc.setProgress(func(p *ScanProgress) { p.Processed++; p.Failed++; p.CurrentPath = path })
+				report(false)
 				return nil
 			}
-			added++
+			sc.setProgress(func(p *ScanProgress) { p.Processed++; p.AddedOrUpdated++; p.CurrentPath = path })
+			report(false)
 			return nil
 		})
 		if err != nil {
@@ -84,10 +157,15 @@ func (sc *Scanner) Scan(ctx context.Context) error {
 		slog.Warn("scan: removing missing tracks", "err", err)
 	}
 
-	slog.Info("scan: complete", "added_or_updated", added, "skipped_unchanged", skipped, "removed", removed, "failed", failed)
-	sc.bus.Publish(events.Event{Type: "library_changed", Data: map[string]int{
-		"added_or_updated": added, "removed": removed, "failed": failed,
-	}})
+	final := sc.setProgress(func(p *ScanProgress) {
+		p.Running = false
+		p.Removed = removed
+		p.CurrentPath = ""
+	})
+
+	slog.Info("scan: complete", "added_or_updated", final.AddedOrUpdated, "skipped_unchanged", final.Skipped,
+		"removed", final.Removed, "failed", final.Failed)
+	sc.bus.Publish(events.Event{Type: "library_changed", Data: final})
 	return nil
 }
 

@@ -17,3 +17,9 @@ func (s *Server) triggerScan(w http.ResponseWriter, r *http.Request) {
 	}()
 	w.WriteHeader(http.StatusAccepted)
 }
+
+// scanStatus is a poll-friendly alternative to the scan_progress SSE event
+// — {"running":false} once a scan finishes or before the first one runs.
+func (s *Server) scanStatus(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, s.scanner.Progress())
+}
