@@ -68,6 +68,33 @@ With no `-config`, cantord still runs with built-in defaults (`~/.local/share/ca
 but `library.music_dirs` has no sane default and must be set via a config
 file.
 
+## CLI client
+
+`cantordctl` is a small standalone client for the HTTP API — useful for
+day-to-day control and as a runnable reference for how a frontend would
+drive cantord.
+
+```sh
+go build -o cantordctl ./cmd/cantordctl
+export CANTORD_ADDR=http://localhost:8080   # or -server on each call
+
+cantordctl artists
+cantordctl albums -letter A
+cantordctl find "aurora"
+cantordctl tracks <album_id>
+cantordctl play <track_id>          # enqueues; auto-plays if queue was empty
+cantordctl play-album <album_id>    # enqueues every track in order
+cantordctl status                   # or: np
+cantordctl pause
+cantordctl volume 60
+cantordctl queue
+cantordctl playlist-save chill <track_id> [<track_id>...]
+cantordctl scan && cantordctl scan-status
+cantordctl events                   # streams the SSE feed live
+```
+
+Run with no arguments for the full command list.
+
 ## API
 
 All endpoints are JSON in/out except `/art/{hash}`.
