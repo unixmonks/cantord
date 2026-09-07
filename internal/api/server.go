@@ -30,6 +30,7 @@ func New(lib *library.Store, artStore *art.Store, engine *playback.Engine, bus *
 func (s *Server) Router() http.Handler {
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("GET /api/artists", s.listArtists)
 	mux.HandleFunc("GET /api/albums", s.listAlbums)
 	mux.HandleFunc("GET /api/albums/index", s.albumIndex)
 	mux.HandleFunc("GET /api/albums/{id}", s.getAlbum)

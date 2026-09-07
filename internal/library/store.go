@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	_ "modernc.org/sqlite"
 )
@@ -278,6 +279,29 @@ func (s *Store) AlphabetIndex() (map[string]string, error) {
 		}
 	}
 	return index, nil
+}
+
+// ListArtists returns the distinct album artists in the library,
+// alphabetized the same way albums are (leading "the/a/an" ignored).
+// Compilation/various-artist track-level artists aren't split out here —
+// this reflects album_artist, matching how the album list groups things.
+func (s *Store) ListArtists() ([]string, error) {
+	rows, err := s.db.Query(`SELECT DISTINCT album_artist FROM albums WHERE album_artist != ''`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var artists []string
+	for rows.Next() {
+		var a string
+		if err := rows.Scan(&a); err != nil {
+			return nil, err
+		}
+		artists = append(artists, a)
+	}
+	sort.Slice(artists, func(i, j int) bool { return sortKey(artists[i]) < sortKey(artists[j]) })
+	return artists, nil
 }
 
 func (s *Store) GetAlbum(id string) (Album, bool, error) {

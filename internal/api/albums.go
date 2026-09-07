@@ -21,6 +21,15 @@ func (s *Server) listAlbums(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, page)
 }
 
+func (s *Server) listArtists(w http.ResponseWriter, r *http.Request) {
+	artists, err := s.lib.ListArtists()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, artists)
+}
+
 func (s *Server) albumIndex(w http.ResponseWriter, r *http.Request) {
 	index, err := s.lib.AlphabetIndex()
 	if err != nil {
