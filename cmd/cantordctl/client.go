@@ -118,6 +118,11 @@ type Status struct {
 	Volume     float64 `json:"volume"`
 }
 
+type SearchResult struct {
+	Albums []Album `json:"albums"`
+	Tracks []Track `json:"tracks"`
+}
+
 type ScanProgress struct {
 	Running        bool   `json:"running"`
 	Total          int    `json:"total"`

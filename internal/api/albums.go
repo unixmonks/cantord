@@ -62,6 +62,26 @@ func (s *Server) listAlbumTracks(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, tracks)
 }
 
+func (s *Server) search(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("q is required"))
+		return
+	}
+	limit := 25
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			limit = n
+		}
+	}
+	result, err := s.lib.Search(query, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (s *Server) getTrack(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	track, found, err := s.lib.GetTrack(id)

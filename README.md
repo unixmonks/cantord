@@ -118,6 +118,7 @@ All endpoints are JSON in/out except `/art/{hash}`.
 
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/api/search?q=&limit=` | Case-insensitive substring search across album name/artist and track title/artist/album; returns `{albums, tracks}` |
 | GET | `/api/albums?cursor=&limit=` | Alphabetical, keyset-paginated album list |
 | GET | `/api/albums/index` | `{"A": cursor, "B": cursor, ...}` for jump-to-letter |
 | GET | `/api/albums/{id}` | Album detail |
@@ -158,5 +159,6 @@ Not built yet (documented as the obvious next steps, not silently missing):
 - Saved-playlist ordering edits (only whole-playlist save/replace exists)
 - Multi-user auth/permissions — currently a single trusted local API
 - Output device enumeration/selection API (device is config-only for now)
-- Search — `cantordctl find` is a client-side substring filter over album/
-  artist names only; there's no server-side or track-title search yet
+- Search is substring `LIKE` matching, not ranked full-text — fine at
+  personal-library scale, but no relevance ranking or typo tolerance;
+  revisit with SQLite FTS5 if that stops being enough

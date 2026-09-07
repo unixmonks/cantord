@@ -21,7 +21,7 @@ func init() {
 		"albums":          {cmdAlbums, "albums [-letter A] [-cursor C] [-limit N] [-all]"},
 		"tracks":          {cmdTracks, "tracks <album_id>"},
 		"track":           {cmdTrack, "track <track_id>   (resolve a bare track ID)"},
-		"find":            {cmdFind, "find <query>   (searches album/artist names)"},
+		"find":            {cmdFind, "find <query>   (searches albums, artists, and track titles)"},
 		"status":          {cmdStatus, "status"},
 		"np":              {cmdStatus, "np             (alias for status)"},
 		"queue":           {cmdQueue, "queue"},

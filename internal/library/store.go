@@ -281,6 +281,70 @@ func (s *Store) AlphabetIndex() (map[string]string, error) {
 	return index, nil
 }
 
+// SearchResult is the combined hit set for a query: matching albums and
+// matching tracks, so a client can jump straight to either.
+type SearchResult struct {
+	Albums []Album `json:"albums"`
+	Tracks []Track `json:"tracks"`
+}
+
+// Search does a case-insensitive substring match (SQLite's LIKE is
+// case-insensitive for ASCII by default) across album name/artist and
+// track title/artist/album. It's intentionally simple — no ranking, no
+// FTS index — which is plenty for a personal-library-scale collection;
+// revisit with FTS5 if that stops being true.
+func (s *Store) Search(query string, limit int) (SearchResult, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 25
+	}
+	pattern := "%" + query + "%"
+
+	albumRows, err := s.db.Query(`
+		SELECT id, name, album_artist, year, sort_key, art_hash, track_count FROM albums
+		WHERE name LIKE ? OR album_artist LIKE ?
+		ORDER BY sort_key, id LIMIT ?
+	`, pattern, pattern, limit)
+	if err != nil {
+		return SearchResult{}, err
+	}
+	defer albumRows.Close()
+
+	var result SearchResult
+	for albumRows.Next() {
+		var a Album
+		var artHash sql.NullString
+		if err := albumRows.Scan(&a.ID, &a.Name, &a.AlbumArtist, &a.Year, &a.SortKey, &artHash, &a.TrackCount); err != nil {
+			return SearchResult{}, err
+		}
+		a.ArtHash = artHash.String
+		result.Albums = append(result.Albums, a)
+	}
+
+	trackRows, err := s.db.Query(`
+		SELECT id, path, title, artist, album, album_artist, album_id, track_no, disc_no, year, genre,
+		       duration_ms, codec, sample_rate, bit_depth, channels, size, mtime
+		FROM tracks
+		WHERE title LIKE ? OR artist LIKE ? OR album LIKE ? OR album_artist LIKE ?
+		ORDER BY artist, album, disc_no, track_no LIMIT ?
+	`, pattern, pattern, pattern, pattern, limit)
+	if err != nil {
+		return SearchResult{}, err
+	}
+	defer trackRows.Close()
+
+	for trackRows.Next() {
+		var t Track
+		if err := trackRows.Scan(&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.AlbumArtist, &t.AlbumID,
+			&t.TrackNo, &t.DiscNo, &t.Year, &t.Genre, &t.DurationMS, &t.Codec, &t.SampleRate, &t.BitDepth,
+			&t.Channels, &t.Size, &t.MTime); err != nil {
+			return SearchResult{}, err
+		}
+		result.Tracks = append(result.Tracks, t)
+	}
+
+	return result, nil
+}
+
 // ListArtists returns the distinct album artists in the library,
 // alphabetized the same way albums are (leading "the/a/an" ignored).
 // Compilation/various-artist track-level artists aren't split out here —

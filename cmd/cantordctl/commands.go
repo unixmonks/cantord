@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -106,35 +107,40 @@ func cmdTrack(c *Client, args []string) error {
 	return nil
 }
 
-// find is a client-side convenience: cantord has no /search endpoint, so
-// this pages through every album and filters locally. Fine at personal-
-// library scale; not meant for huge collections.
 func cmdFind(c *Client, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("usage: cantordctl find <query>")
 	}
-	query := strings.ToLower(strings.Join(args, " "))
+	query := strings.Join(args, " ")
 
-	w := newTable()
-	fmt.Fprintln(w, "ALBUM ID\tALBUM\tARTIST\tYEAR")
-	cursor := ""
-	for {
-		var page AlbumsPage
-		if err := c.get(fmt.Sprintf("/api/albums?cursor=%s&limit=200", cursor), &page); err != nil {
-			return err
-		}
-		for _, a := range page.Albums {
-			haystack := strings.ToLower(a.Name + " " + a.AlbumArtist)
-			if strings.Contains(haystack, query) {
-				fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", a.ID, a.Name, a.AlbumArtist, a.Year)
-			}
-		}
-		if page.NextCursor == "" {
-			break
-		}
-		cursor = page.NextCursor
+	var result SearchResult
+	if err := c.get("/api/search?q="+url.QueryEscape(query), &result); err != nil {
+		return err
 	}
-	return w.Flush()
+
+	if len(result.Albums) > 0 {
+		w := newTable()
+		fmt.Fprintln(w, "ALBUM ID\tALBUM\tARTIST\tYEAR")
+		for _, a := range result.Albums {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", a.ID, a.Name, a.AlbumArtist, a.Year)
+		}
+		w.Flush()
+	}
+	if len(result.Tracks) > 0 {
+		if len(result.Albums) > 0 {
+			fmt.Println()
+		}
+		w := newTable()
+		fmt.Fprintln(w, "TRACK ID\tARTIST\tTITLE\tALBUM")
+		for _, t := range result.Tracks {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", t.ID, t.Artist, t.Title, t.Album)
+		}
+		w.Flush()
+	}
+	if len(result.Albums) == 0 && len(result.Tracks) == 0 {
+		fmt.Println("no matches")
+	}
+	return nil
 }
 
 func cmdStatus(c *Client, args []string) error {
