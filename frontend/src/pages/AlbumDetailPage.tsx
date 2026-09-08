@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { usePlayer } from "../state/PlayerContext";
 import type { Album, Track } from "../api/types";
 import { AlbumArt } from "../components/AlbumArt";
@@ -11,6 +11,7 @@ import { useBackNavigate } from "../hooks/useBackNavigate";
 export function AlbumDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { api, queue, playIndex, refreshQueue, showToast, libraryVersion, artUpdate } = usePlayer();
+  const navigate = useNavigate();
   const goBack = useBackNavigate("/albums");
   const [album, setAlbum] = useState<Album | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -76,7 +77,13 @@ export function AlbumDetailPage() {
             {album.name}
           </h1>
           <div style={{ fontSize: 15, color: "var(--text-dim)", marginBottom: 4 }}>
-            {album.album_artist}
+            <span
+              className="meta-link"
+              style={{ cursor: "pointer" }}
+              onClick={() => navigate(`/artists/${encodeURIComponent(album.album_artist)}`)}
+            >
+              {album.album_artist}
+            </span>
             {album.year ? ` · ${album.year}` : ""}
           </div>
           <div style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 20 }}>

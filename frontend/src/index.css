@@ -138,6 +138,11 @@ select {
   pointer-events: none;
 }
 
+.meta-link:hover {
+  color: var(--text) !important;
+  text-decoration: underline;
+}
+
 .row-hover {
   border-radius: 8px;
   transition: background 0.1s;

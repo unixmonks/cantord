@@ -1,4 +1,5 @@
 import { useState, type DragEvent, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import type { Track } from "../api/types";
 import { formatDuration } from "../utils/format";
 import { usePlayer } from "../state/PlayerContext";
@@ -53,6 +54,7 @@ export function TrackRow({
   dragOver = false,
 }: TrackRowProps) {
   const { api, enqueue, showToast } = usePlayer();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
 
   async function toggleFavorite() {
@@ -124,8 +126,33 @@ export function TrackRow({
         </div>
         {showAlbum && (
           <div style={{ fontSize: 12, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {track.artist}
-            {track.album ? ` — ${track.album}` : ""}
+            {track.artist && (
+              <span
+                className="meta-link"
+                style={{ cursor: "pointer" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/artists/${encodeURIComponent(track.album_artist || track.artist)}`);
+                }}
+              >
+                {track.artist}
+              </span>
+            )}
+            {track.album && (
+              <>
+                {track.artist ? " — " : ""}
+                <span
+                  className="meta-link"
+                  style={{ cursor: track.album_id ? "pointer" : "default" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (track.album_id) navigate(`/albums/${track.album_id}`);
+                  }}
+                >
+                  {track.album}
+                </span>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../state/PlayerContext";
 import { AlbumArt } from "./AlbumArt";
 import { Slider } from "./Slider";
@@ -19,6 +20,7 @@ import {
 export function PlayerBar() {
   const { status, togglePlayPause, stop, next, previous, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat } =
     usePlayer();
+  const navigate = useNavigate();
 
   const track = status?.track;
   const duration = status?.duration_ms ?? 0;
@@ -74,8 +76,27 @@ export function PlayerBar() {
                 {track.title}
               </div>
               <div style={{ fontSize: 12, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {track.artist}
-                {track.album ? ` — ${track.album}` : ""}
+                {track.artist && (
+                  <span
+                    className="meta-link"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => navigate(`/artists/${encodeURIComponent(track.album_artist || track.artist)}`)}
+                  >
+                    {track.artist}
+                  </span>
+                )}
+                {track.album && (
+                  <>
+                    {track.artist ? " — " : ""}
+                    <span
+                      className="meta-link"
+                      style={{ cursor: track.album_id ? "pointer" : "default" }}
+                      onClick={() => track.album_id && navigate(`/albums/${track.album_id}`)}
+                    >
+                      {track.album}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </>
