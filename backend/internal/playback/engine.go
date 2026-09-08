@@ -288,7 +288,12 @@ func (e *Engine) PlayIndex(index int) error {
 	if !inRange {
 		return fmt.Errorf("index %d out of range", index)
 	}
-	return e.mpv.PlaylistPlayIndex(index)
+	if err := e.mpv.PlaylistPlayIndex(index); err != nil {
+		return err
+	}
+	// Switching tracks doesn't clear mpv's pause flag on its own — without
+	// this, picking a track while paused loads it but leaves it paused.
+	return e.mpv.SetPause(false)
 }
 
 func (e *Engine) Play() error     { return e.mpv.SetPause(false) }
