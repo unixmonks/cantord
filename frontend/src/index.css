@@ -1,0 +1,194 @@
+:root {
+  color-scheme: dark;
+  --bg: oklch(0.15 0.006 80);
+  --bg-elev: oklch(0.195 0.007 80);
+  --bg-elev-2: oklch(0.245 0.009 80);
+  --bg-elev-3: oklch(0.30 0.01 80);
+  --border: oklch(0.31 0.009 80);
+  --text: oklch(0.96 0.004 80);
+  --text-dim: oklch(0.70 0.012 80);
+  --text-faint: oklch(0.50 0.012 80);
+  --accent: oklch(0.74 0.16 45);
+  --accent-ink: oklch(0.18 0.02 45);
+  --accent-2: oklch(0.74 0.16 190);
+  --good: oklch(0.72 0.15 145);
+  --danger: oklch(0.62 0.19 25);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.disp {
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  color: oklch(0.8 0.16 45);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-elev-2);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+select {
+  font-family: inherit;
+  color: inherit;
+}
+
+.btn {
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 9px 16px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.btn:hover {
+  color: var(--text);
+  border-color: var(--bg-elev-3);
+  background: var(--bg-elev-2);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.btn-primary:hover {
+  background: oklch(0.8 0.16 45);
+  border-color: oklch(0.8 0.16 45);
+  color: var(--accent-ink);
+}
+.btn-danger {
+  color: var(--danger);
+  border-color: oklch(0.62 0.19 25 / 0.4);
+}
+.btn-danger:hover {
+  background: oklch(0.62 0.19 25 / 0.12);
+  color: var(--danger);
+}
+
+.iconbtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.iconbtn:hover {
+  background: var(--bg-elev-2);
+  color: var(--text);
+}
+.iconbtn.active {
+  color: var(--accent);
+}
+.iconbtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+.row-hover {
+  border-radius: 8px;
+  transition: background 0.1s;
+}
+.row-hover:hover {
+  background: var(--bg-elev-2);
+}
+.row-hover .row-actions {
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.row-hover:hover .row-actions {
+  opacity: 1;
+}
+
+.field {
+  font-size: 14px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 14px;
+  color: var(--text);
+  width: 100%;
+}
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.empty-state {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--accent) 40%, transparent);
+}

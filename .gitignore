@@ -1,4 +1,18 @@
-/cantord
-/bin/
+# backend (Go)
+/backend/cantord
+/backend/cantordctl
+/backend/bin/
 *.db
 *.sock
+
+# frontend (Vite/React)
+/frontend/node_modules
+/frontend/dist
+/frontend/dist-ssr
+*.local
+
+# editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
