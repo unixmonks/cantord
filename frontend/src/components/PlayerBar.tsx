@@ -54,6 +54,8 @@ export function PlayerBar() {
   const progressRatio = duration > 0 ? (dragPos ?? localPos) / duration : 0;
   const volumeRatio = (dragVol ?? status?.volume ?? 0) / 100;
 
+  if (!track) return null;
+
   return (
     <footer
       style={{
@@ -68,41 +70,35 @@ export function PlayerBar() {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 12, width: 280, flexShrink: 0, minWidth: 0 }}>
-        {track ? (
-          <>
-            <AlbumArt artHash={track.art_hash} seed={track.album_id || track.album} label={track.album || track.title} size={52} />
-            <div style={{ minWidth: 0 }}>
-              <div className="disp" style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {track.title}
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {track.artist && (
-                  <span
-                    className="meta-link"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => navigate(`/artists/${encodeURIComponent(track.album_artist || track.artist)}`)}
-                  >
-                    {track.artist}
-                  </span>
-                )}
-                {track.album && (
-                  <>
-                    {track.artist ? " — " : ""}
-                    <span
-                      className="meta-link"
-                      style={{ cursor: track.album_id ? "pointer" : "default" }}
-                      onClick={() => track.album_id && navigate(`/albums/${track.album_id}`)}
-                    >
-                      {track.album}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          <div style={{ fontSize: 13, color: "var(--text-faint)" }}>Nothing playing</div>
-        )}
+        <AlbumArt artHash={track.art_hash} seed={track.album_id || track.album} label={track.album || track.title} size={52} />
+        <div style={{ minWidth: 0 }}>
+          <div className="disp" style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {track.title}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {track.artist && (
+              <span
+                className="meta-link"
+                style={{ cursor: "pointer" }}
+                onClick={() => navigate(`/artists/${encodeURIComponent(track.album_artist || track.artist)}`)}
+              >
+                {track.artist}
+              </span>
+            )}
+            {track.album && (
+              <>
+                {track.artist ? " — " : ""}
+                <span
+                  className="meta-link"
+                  style={{ cursor: track.album_id ? "pointer" : "default" }}
+                  onClick={() => track.album_id && navigate(`/albums/${track.album_id}`)}
+                >
+                  {track.album}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, maxWidth: 640, margin: "0 auto" }}>
@@ -155,7 +151,6 @@ export function PlayerBar() {
           </span>
           <Slider
             value={progressRatio}
-            disabled={!track}
             onDragValue={(r) => setDragPos(r)}
             onCommit={(r) => {
               setDragPos(null);
