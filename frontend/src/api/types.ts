@@ -6,6 +6,7 @@ export interface Track {
   album: string;
   album_artist: string;
   album_id: string;
+  art_hash?: string;
   track_no: number;
   disc_no: number;
   year: number;

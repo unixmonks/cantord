@@ -119,11 +119,11 @@ func addColumnIfMissing(db *sql.DB, table, column, decl string) error {
 // trackColumns/trackJoins let every query that returns Track rows share one
 // column list and one join shape (favorites/ratings are sparse side tables,
 // not columns on tracks itself) instead of drifting out of sync.
-const trackColumns = `t.id, t.path, t.title, t.artist, t.album, t.album_artist, t.album_id, t.track_no, t.disc_no,
+const trackColumns = `t.id, t.path, t.title, t.artist, t.album, t.album_artist, t.album_id, a.art_hash, t.track_no, t.disc_no,
 	t.year, t.genre, t.duration_ms, t.codec, t.sample_rate, t.bit_depth, t.channels, t.size, t.mtime, t.added_at,
 	CASE WHEN f.track_id IS NULL THEN 0 ELSE 1 END, COALESCE(r.rating, 0)`
 
-const trackJoins = `LEFT JOIN favorites f ON f.track_id = t.id LEFT JOIN ratings r ON r.track_id = t.id`
+const trackJoins = `LEFT JOIN favorites f ON f.track_id = t.id LEFT JOIN ratings r ON r.track_id = t.id LEFT JOIN albums a ON a.id = t.album_id`
 
 // rowScanner is satisfied by both *sql.Row and *sql.Rows.
 type rowScanner interface {
@@ -133,10 +133,12 @@ type rowScanner interface {
 func scanTrack(rs rowScanner) (Track, error) {
 	var t Track
 	var fav int
-	err := rs.Scan(&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.AlbumArtist, &t.AlbumID,
+	var artHash sql.NullString
+	err := rs.Scan(&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.AlbumArtist, &t.AlbumID, &artHash,
 		&t.TrackNo, &t.DiscNo, &t.Year, &t.Genre, &t.DurationMS, &t.Codec, &t.SampleRate, &t.BitDepth,
 		&t.Channels, &t.Size, &t.MTime, &t.AddedAt, &fav, &t.Rating)
 	t.Favorite = fav != 0
+	t.ArtHash = artHash.String
 	return t, err
 }
 

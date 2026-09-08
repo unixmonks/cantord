@@ -10,6 +10,7 @@ type Track struct {
 	Album       string `json:"album"`
 	AlbumArtist string `json:"album_artist"`
 	AlbumID     string `json:"album_id"`
+	ArtHash     string `json:"art_hash,omitempty"`
 	TrackNo     int    `json:"track_no"`
 	DiscNo      int    `json:"disc_no"`
 	Year        int    `json:"year"`

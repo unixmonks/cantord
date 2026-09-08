@@ -110,7 +110,7 @@ export function TrackRow({
           {isPlaying ? <EqGlyph /> : index}
         </div>
       )}
-      {showArt && <AlbumArt artHash={undefined} seed={track.album_id || track.album} label={track.album || track.title} size={40} />}
+      {showArt && <AlbumArt artHash={track.art_hash} seed={track.album_id || track.album} label={track.album || track.title} size={40} />}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{

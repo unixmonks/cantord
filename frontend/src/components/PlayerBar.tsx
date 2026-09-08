@@ -70,7 +70,7 @@ export function PlayerBar() {
       <div style={{ display: "flex", alignItems: "center", gap: 12, width: 280, flexShrink: 0, minWidth: 0 }}>
         {track ? (
           <>
-            <AlbumArt artHash={undefined} seed={track.album_id || track.album} label={track.album || track.title} size={52} />
+            <AlbumArt artHash={track.art_hash} seed={track.album_id || track.album} label={track.album || track.title} size={52} />
             <div style={{ minWidth: 0 }}>
               <div className="disp" style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {track.title}
