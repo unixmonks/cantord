@@ -20,6 +20,7 @@ interface TrackRowProps {
   showArt?: boolean;
   showAlbum?: boolean;
   isPlaying?: boolean;
+  isPaused?: boolean;
   onPlay?: () => void;
   onRemove?: () => void;
   onChange?: (track: Track) => void;
@@ -40,6 +41,7 @@ export function TrackRow({
   showArt = true,
   showAlbum = true,
   isPlaying = false,
+  isPaused = false,
   onPlay,
   onRemove,
   onChange,
@@ -107,7 +109,7 @@ export function TrackRow({
       )}
       {index !== undefined && (
         <div style={{ width: 20, textAlign: "center", fontSize: 13, color: isPlaying ? "var(--accent)" : "var(--text-faint)", flexShrink: 0 }}>
-          {isPlaying ? <EqGlyph /> : index}
+          {isPlaying ? <EqGlyph paused={isPaused} /> : index}
         </div>
       )}
       {showArt && <AlbumArt artHash={track.art_hash} seed={track.album_id || track.album} label={track.album || track.title} size={40} />}
@@ -206,12 +208,12 @@ export function TrackRow({
   );
 }
 
-function EqGlyph() {
+function EqGlyph({ paused = false }: { paused?: boolean }) {
   return (
-    <svg width="13" height="13" viewBox="0 0 20 20">
-      <rect x="3" y="8" width="3" height="8" fill="currentColor" />
-      <rect x="8.5" y="4" width="3" height="12" fill="currentColor" />
-      <rect x="14" y="10" width="3" height="6" fill="currentColor" />
-    </svg>
+    <span className={`eq-bars${paused ? " is-paused" : ""}`}>
+      <span className="eq-bar" />
+      <span className="eq-bar" />
+      <span className="eq-bar" />
+    </span>
   );
 }

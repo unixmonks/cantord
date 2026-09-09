@@ -64,6 +64,7 @@ export function QueuePage() {
                 track={track}
                 index={i + 1}
                 isPlaying={status?.state !== "stopped" && status?.queue_index === i}
+                isPaused={status?.state === "paused" && status?.queue_index === i}
                 hideAdd
                 onChange={() => refreshQueue()}
                 onPlay={() => playIndex(i)}
