@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../state/PlayerContext";
 import type { Album } from "../api/types";
 import { AlbumArt } from "../components/AlbumArt";
+import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 
 // Persists loaded albums (and how far the user paginated) across mounts, so
 // navigating to an album and back doesn't drop back to the first page and
@@ -74,6 +75,10 @@ export function AlbumsPage() {
     loadPage(letterCursor, true);
   }
 
+  const sentinelRef = useInfiniteScroll(() => {
+    if (!loading) loadPage(cursor);
+  }, hasMore);
+
   return (
     <div style={{ display: "flex", gap: 8 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -110,16 +115,28 @@ export function AlbumsPage() {
         </div>
 
         {hasMore && (
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 36 }}>
-            <button className="btn" disabled={loading} onClick={() => loadPage(cursor)}>
-              {loading ? "Loading…" : "Load more"}
-            </button>
+          <div ref={sentinelRef} style={{ display: "flex", justifyContent: "center", marginTop: 36, minHeight: 1 }}>
+            {loading && <span style={{ fontSize: 13, color: "var(--text-faint)" }}>Loading…</span>}
           </div>
         )}
       </div>
 
       {Object.keys(index).length > 0 && (
-        <div style={{ width: 28, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 64, gap: 1 }}>
+        <div
+          style={{
+            width: 28,
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            paddingTop: 64,
+            gap: 1,
+            position: "sticky",
+            top: 0,
+            alignSelf: "flex-start",
+            maxHeight: "100vh",
+          }}
+        >
           {Object.keys(index)
             .sort()
             .map((letter) => (
