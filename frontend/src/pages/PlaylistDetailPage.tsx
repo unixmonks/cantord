@@ -5,13 +5,16 @@ import type { Track } from "../api/types";
 import { TrackRow } from "../components/TrackRow";
 import { IconBack, IconPlay, IconPlus, IconTrash } from "../components/Icons";
 import { formatDurationLong } from "../utils/format";
-import { useBackNavigate } from "../hooks/useBackNavigate";
 
 export function PlaylistDetailPage() {
   const { name: routeName } = useParams<{ name: string }>();
   const { api, queue, showToast } = usePlayer();
   const navigate = useNavigate();
-  const goBack = useBackNavigate("/playlists");
+  // Always up to the playlist list, not wherever in-app history happened to
+  // come from — unlike albums/artists, a playlist has no natural "came from
+  // a related entity" case (e.g. the AI assistant links into a playlist
+  // from anywhere), so history-based back would land somewhere unrelated.
+  const goBack = () => navigate("/playlists");
   const [name, setName] = useState(routeName ?? "");
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
