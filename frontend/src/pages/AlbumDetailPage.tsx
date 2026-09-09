@@ -4,6 +4,7 @@ import { usePlayer } from "../state/PlayerContext";
 import type { Album, Track } from "../api/types";
 import { AlbumArt } from "../components/AlbumArt";
 import { TrackRow } from "../components/TrackRow";
+import { AddToPlaylistMenu } from "../components/AddToPlaylistMenu";
 import { IconBack, IconPlay, IconPlus } from "../components/Icons";
 import { formatDurationLong } from "../utils/format";
 import { useBackNavigate } from "../hooks/useBackNavigate";
@@ -96,6 +97,7 @@ export function AlbumDetailPage() {
             <button className="btn" disabled={busy} onClick={() => enqueueAll(false)}>
               <IconPlus size={14} /> Add to queue
             </button>
+            <AddToPlaylistMenu variant="button" trackIds={tracks.map((t) => t.id)} disabled={busy || tracks.length === 0} />
           </div>
         </div>
       </div>

@@ -138,6 +138,15 @@ select {
   pointer-events: none;
 }
 
+.menu-item:hover {
+  background: var(--bg-elev-3);
+}
+.menu-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
+
 .meta-link:hover {
   color: var(--text) !important;
   text-decoration: underline;

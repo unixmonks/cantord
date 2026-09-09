@@ -4,6 +4,7 @@ import type { Track } from "../api/types";
 import { formatDuration } from "../utils/format";
 import { usePlayer } from "../state/PlayerContext";
 import { AlbumArt } from "./AlbumArt";
+import { AddToPlaylistMenu } from "./AddToPlaylistMenu";
 import {
   IconGrip,
   IconHeart,
@@ -197,6 +198,7 @@ export function TrackRow({
             <IconPlus size={15} />
           </button>
         )}
+        <AddToPlaylistMenu trackIds={[track.id]} />
         {extraActions}
         {onRemove && (
           <button className="iconbtn" onClick={onRemove} title="Remove">
