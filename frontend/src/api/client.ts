@@ -70,7 +70,7 @@ export class ApiClient {
     const params = new URLSearchParams({ q });
     if (limit) params.set("limit", String(limit));
     const result = await request<SearchResult>(this.baseUrl, `/api/search?${params}`);
-    return { albums: orEmpty(result.albums), tracks: orEmpty(result.tracks) };
+    return { artists: orEmpty(result.artists), albums: orEmpty(result.albums), tracks: orEmpty(result.tracks) };
   }
   listArtists() {
     return request<string[]>(this.baseUrl, "/api/artists").then(orEmpty);

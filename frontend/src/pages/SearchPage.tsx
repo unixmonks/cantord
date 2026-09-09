@@ -81,8 +81,28 @@ export function SearchPage() {
 
       {result && !loading && (
         <>
-          {result.albums.length === 0 && result.tracks.length === 0 && (
+          {result.artists.length === 0 && result.albums.length === 0 && result.tracks.length === 0 && (
             <div className="empty-state">No results for "{query}".</div>
+          )}
+
+          {result.artists.length > 0 && (
+            <div style={{ marginBottom: 36 }}>
+              <div className="section-label" style={{ marginBottom: 6 }}>
+                Artists · {result.artists.length}
+              </div>
+              <div style={{ maxWidth: 640 }}>
+                {result.artists.map((name) => (
+                  <div
+                    key={name}
+                    className="row-hover"
+                    onClick={() => navigate(`/artists/${encodeURIComponent(name)}`)}
+                    style={{ display: "flex", alignItems: "center", padding: "12px 14px", cursor: "pointer" }}
+                  >
+                    <span style={{ fontSize: 15, fontWeight: 500 }}>{name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {result.albums.length > 0 && (

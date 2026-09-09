@@ -38,6 +38,7 @@ export interface Page {
 }
 
 export interface SearchResult {
+  artists: string[];
   albums: Album[];
   tracks: Track[];
 }

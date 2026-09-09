@@ -356,11 +356,12 @@ func (s *Store) AlphabetIndex() (map[string]string, error) {
 	return index, nil
 }
 
-// SearchResult is the combined hit set for a query: matching albums and
-// matching tracks, so a client can jump straight to either.
+// SearchResult is the combined hit set for a query: matching artists,
+// albums, and tracks, so a client can jump straight to any of them.
 type SearchResult struct {
-	Albums []Album `json:"albums"`
-	Tracks []Track `json:"tracks"`
+	Artists []string `json:"artists"`
+	Albums  []Album  `json:"albums"`
+	Tracks  []Track  `json:"tracks"`
 }
 
 // Search does a case-insensitive substring match (SQLite's LIKE is
@@ -374,6 +375,28 @@ func (s *Store) Search(query string, limit int) (SearchResult, error) {
 	}
 	pattern := "%" + query + "%"
 
+	artistRows, err := s.db.Query(`
+		SELECT DISTINCT album_artist FROM albums
+		WHERE album_artist LIKE ? AND album_artist != ''
+	`, pattern)
+	if err != nil {
+		return SearchResult{}, err
+	}
+	defer artistRows.Close()
+
+	var result SearchResult
+	for artistRows.Next() {
+		var name string
+		if err := artistRows.Scan(&name); err != nil {
+			return SearchResult{}, err
+		}
+		result.Artists = append(result.Artists, name)
+	}
+	sort.Slice(result.Artists, func(i, j int) bool { return sortKey(result.Artists[i]) < sortKey(result.Artists[j]) })
+	if len(result.Artists) > limit {
+		result.Artists = result.Artists[:limit]
+	}
+
 	albumRows, err := s.db.Query(`
 		SELECT id, name, album_artist, year, sort_key, art_hash, track_count FROM albums
 		WHERE name LIKE ? OR album_artist LIKE ?
@@ -384,7 +407,6 @@ func (s *Store) Search(query string, limit int) (SearchResult, error) {
 	}
 	defer albumRows.Close()
 
-	var result SearchResult
 	for albumRows.Next() {
 		var a Album
 		var artHash sql.NullString
