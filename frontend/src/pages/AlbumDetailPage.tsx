@@ -10,7 +10,7 @@ import { useBackNavigate } from "../hooks/useBackNavigate";
 
 export function AlbumDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { api, queue, playIndex, refreshQueue, showToast, libraryVersion, artUpdate } = usePlayer();
+  const { api, queue, playFromList, refreshQueue, showToast, libraryVersion, artUpdate } = usePlayer();
   const navigate = useNavigate();
   const goBack = useBackNavigate("/albums");
   const [album, setAlbum] = useState<Album | null>(null);
@@ -126,22 +126,11 @@ export function AlbumDetailPage() {
             showArt={false}
             showAlbum={false}
             showRating
-            onPlay={() => enqueueAndPlayOne(track)}
+            onPlay={() => playFromList(tracks, i)}
             onChange={(updated) => setTracks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))}
           />
         ))}
       </div>
     </div>
   );
-
-  async function enqueueAndPlayOne(track: Track) {
-    try {
-      const startIndex = queue.length;
-      await api.enqueue(track.id);
-      refreshQueue();
-      await playIndex(startIndex);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Couldn't play track");
-    }
-  }
 }

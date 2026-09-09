@@ -4,6 +4,7 @@ import {
   IconAlbum,
   IconArtist,
   IconGenre,
+  IconHeart,
   IconHome,
   IconPlaylist,
   IconQueue,
@@ -16,6 +17,7 @@ import { usePlayer } from "../state/PlayerContext";
 const NAV_ITEMS = [
   { root: "/", label: "Home", icon: IconHome, exact: true },
   { root: "/queue", label: "Queue", icon: IconQueue, exact: true },
+  { root: "/favorites", label: "Favorites", icon: IconHeart, exact: true },
   { root: "/albums", label: "Albums", icon: IconAlbum },
   { root: "/artists", label: "Artists", icon: IconArtist },
   { root: "/genres", label: "Genres", icon: IconGenre },

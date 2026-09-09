@@ -7,7 +7,7 @@ import { TrackRow } from "../components/TrackRow";
 import { IconClose, IconSearch } from "../components/Icons";
 
 export function SearchPage() {
-  const { api, playTrackNow, artUpdate } = usePlayer();
+  const { api, playFromList, artUpdate } = usePlayer();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") ?? "");
@@ -120,11 +120,11 @@ export function SearchPage() {
                 Tracks · {result.tracks.length}
               </div>
               <div style={{ maxWidth: 640 }}>
-                {result.tracks.map((track) => (
+                {result.tracks.map((track, i) => (
                   <TrackRow
                     key={track.id}
                     track={track}
-                    onPlay={() => playTrackNow(track.id)}
+                    onPlay={() => playFromList(result.tracks, i)}
                     onChange={(updated) =>
                       setResult((prev) =>
                         prev ? { ...prev, tracks: prev.tracks.map((t) => (t.id === updated.id ? updated : t)) } : prev,

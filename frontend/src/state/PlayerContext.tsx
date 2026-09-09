@@ -54,7 +54,7 @@ interface PlayerContextValue {
   cycleRepeat: () => void;
   enqueue: (trackId: string) => Promise<void>;
   playNext: (trackId: string) => Promise<void>;
-  playTrackNow: (trackId: string) => Promise<void>;
+  playFromList: (tracks: Track[], startIndex: number) => Promise<void>;
   moveQueue: (from: number, to: number) => Promise<void>;
   clearQueue: () => Promise<void>;
   removeFromQueue: (index: number) => Promise<void>;
@@ -215,15 +215,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           refreshQueue();
           showToast("Playing next");
         }),
-      playTrackNow: (trackId: string) =>
+      playFromList: (tracks: Track[], startIndex: number) =>
         guard(async () => {
-          const wasEmpty = queue.length === 0;
-          const insertedAt = queue.length;
-          await api.enqueue(trackId);
-          refreshQueue();
-          if (!wasEmpty) {
-            await api.playIndex(insertedAt);
+          const toQueue = tracks.slice(startIndex);
+          if (toQueue.length === 0) return;
+          await api.clearQueue();
+          for (const track of toQueue) {
+            await api.enqueue(track.id);
           }
+          await api.playIndex(0);
+          refreshQueue();
+          refreshStatus();
         }),
       moveQueue: (from: number, to: number) =>
         guard(async () => {

@@ -8,7 +8,7 @@ import { useBackNavigate } from "../hooks/useBackNavigate";
 
 export function GenreDetailPage() {
   const { genre } = useParams<{ genre: string }>();
-  const { api, libraryVersion, showToast, playTrackNow } = usePlayer();
+  const { api, libraryVersion, showToast, playFromList } = usePlayer();
   const goBack = useBackNavigate("/genres");
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,12 +43,12 @@ export function GenreDetailPage() {
       {!loading && tracks.length === 0 && <div className="empty-state">No tracks tagged with this genre.</div>}
 
       <div style={{ maxWidth: 720 }}>
-        {tracks.map((track) => (
+        {tracks.map((track, i) => (
           <TrackRow
             key={track.id}
             track={track}
             showRating
-            onPlay={() => playTrackNow(track.id)}
+            onPlay={() => playFromList(tracks, i)}
             onChange={(updated) => setTracks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))}
           />
         ))}

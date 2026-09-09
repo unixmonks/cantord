@@ -6,7 +6,7 @@ import { TrackRow } from "../components/TrackRow";
 import { IconClock, IconHeartFilled } from "../components/Icons";
 
 export function HomePage() {
-  const { api, libraryVersion, showToast, playTrackNow } = usePlayer();
+  const { api, libraryVersion, showToast, playFromList } = usePlayer();
   const navigate = useNavigate();
   const [recent, setRecent] = useState<Track[]>([]);
   const [played, setPlayed] = useState<Track[]>([]);
@@ -41,7 +41,7 @@ export function HomePage() {
         onSeeAll={() => navigate("/recent")}
         empty="Nothing has been added yet."
         tracks={recent}
-        onPlay={playTrackNow}
+        onPlay={(i) => playFromList(recent, i)}
       />
       <Section
         title="Recently Played"
@@ -49,7 +49,7 @@ export function HomePage() {
         onSeeAll={() => navigate("/recently-played")}
         empty="Nothing has been played yet."
         tracks={played}
-        onPlay={playTrackNow}
+        onPlay={(i) => playFromList(played, i)}
       />
       <Section
         title="Favorites"
@@ -57,7 +57,7 @@ export function HomePage() {
         onSeeAll={() => navigate("/favorites")}
         empty="Tap the heart on any track to favorite it."
         tracks={favorites}
-        onPlay={playTrackNow}
+        onPlay={(i) => playFromList(favorites, i)}
       />
     </div>
   );
@@ -76,7 +76,7 @@ function Section({
   tracks: Track[];
   empty: string;
   onSeeAll: () => void;
-  onPlay: (trackId: string) => void;
+  onPlay: (index: number) => void;
 }) {
   return (
     <div>
@@ -99,8 +99,8 @@ function Section({
         </div>
       ) : (
         <div style={{ maxWidth: 720 }}>
-          {tracks.map((track) => (
-            <TrackRow key={track.id} track={track} onPlay={() => onPlay(track.id)} />
+          {tracks.map((track, i) => (
+            <TrackRow key={track.id} track={track} onPlay={() => onPlay(i)} />
           ))}
         </div>
       )}

@@ -11,7 +11,7 @@ interface TrackListPageProps {
 
 export function TrackListPage({ title, emptyMessage, fetcher }: TrackListPageProps) {
   const player = usePlayer();
-  const { libraryVersion, showToast, playTrackNow } = player;
+  const { libraryVersion, showToast, playFromList } = player;
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,12 +37,12 @@ export function TrackListPage({ title, emptyMessage, fetcher }: TrackListPagePro
       {!loading && tracks.length === 0 && <div className="empty-state">{emptyMessage}</div>}
 
       <div style={{ maxWidth: 720 }}>
-        {tracks.map((track) => (
+        {tracks.map((track, i) => (
           <TrackRow
             key={track.id}
             track={track}
             showRating
-            onPlay={() => playTrackNow(track.id)}
+            onPlay={() => playFromList(tracks, i)}
             onChange={(updated) => setTracks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))}
           />
         ))}

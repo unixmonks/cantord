@@ -272,12 +272,18 @@ func (e *Engine) RemoveFromQueue(index int) error {
 func (e *Engine) ClearQueue() error {
 	e.mu.Lock()
 	e.queue = nil
+	e.pos = -1
 	e.mu.Unlock()
 
-	if err := e.mpv.PlaylistClear(); err != nil {
+	// mpv's "playlist-clear" command deliberately keeps the currently-playing
+	// entry, which would leave mpv's playlist out of sync with e.queue (now
+	// empty) and the old track still audible. "stop" clears the playlist
+	// (including the current entry) and halts playback to match.
+	if err := e.mpv.Stop(); err != nil {
 		return err
 	}
 	e.bus.Publish(events.Event{Type: "queue_changed", Data: e.Queue()})
+	e.bus.Publish(events.Event{Type: "status", Data: e.Status()})
 	return nil
 }
 
