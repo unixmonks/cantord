@@ -70,6 +70,16 @@ CREATE TABLE IF NOT EXISTS ratings (
 	track_id TEXT PRIMARY KEY,
 	rating INTEGER NOT NULL
 );
+
+-- Singleton row (id always 1): the play queue and playback position, so a
+-- restart or crash resumes where the user left off instead of starting
+-- empty.
+CREATE TABLE IF NOT EXISTS queue_state (
+	id INTEGER PRIMARY KEY CHECK (id = 1),
+	track_ids TEXT NOT NULL,
+	position INTEGER NOT NULL,
+	position_ms INTEGER NOT NULL
+);
 `
 
 func Open(path string) (*Store, error) {
@@ -791,6 +801,39 @@ func (s *Store) ListPlaylists() ([]string, error) {
 func (s *Store) DeletePlaylist(name string) error {
 	_, err := s.db.Exec(`DELETE FROM playlists WHERE name = ?`, name)
 	return err
+}
+
+// SaveQueueState checkpoints the play queue — track order, which entry is
+// current, and how far into it playback had gotten — so the engine can
+// restore it on the next startup. Called on every queue change and
+// periodically while playing; overwrites the single saved snapshot.
+func (s *Store) SaveQueueState(trackIDs []string, position, positionMS int) error {
+	data, err := json.Marshal(trackIDs)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`
+		INSERT INTO queue_state (id, track_ids, position, position_ms) VALUES (1, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET track_ids = excluded.track_ids, position = excluded.position, position_ms = excluded.position_ms
+	`, string(data), position, positionMS)
+	return err
+}
+
+// LoadQueueState returns the last saved queue snapshot, or a nil slice if
+// none was ever saved (fresh database).
+func (s *Store) LoadQueueState() (trackIDs []string, position, positionMS int, err error) {
+	var raw string
+	err = s.db.QueryRow(`SELECT track_ids, position, position_ms FROM queue_state WHERE id = 1`).Scan(&raw, &position, &positionMS)
+	if err == sql.ErrNoRows {
+		return nil, -1, 0, nil
+	}
+	if err != nil {
+		return nil, -1, 0, err
+	}
+	if err := json.Unmarshal([]byte(raw), &trackIDs); err != nil {
+		return nil, -1, 0, err
+	}
+	return trackIDs, position, positionMS, nil
 }
 
 func (s *Store) GetTrack(id string) (Track, bool, error) {

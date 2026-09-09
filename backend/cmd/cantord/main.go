@@ -67,6 +67,7 @@ func main() {
 		os.Exit(1)
 	}
 	engine := playback.NewEngine(mpvClient, lib, bus)
+	engine.Restore()
 	go engine.Run(ctx)
 
 	server := api.New(lib, artStore, engine, bus, scanner)

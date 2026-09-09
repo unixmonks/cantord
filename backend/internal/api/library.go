@@ -10,6 +10,7 @@ import (
 // reported via the library_changed event on /api/events rather than making
 // the caller wait on a potentially slow filesystem walk.
 func (s *Server) triggerScan(w http.ResponseWriter, r *http.Request) {
+	slog.Info("api: scan triggered")
 	go func() {
 		if err := s.scanner.Scan(context.Background()); err != nil {
 			slog.Error("api: triggered scan failed", "err", err)

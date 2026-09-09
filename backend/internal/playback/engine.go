@@ -53,6 +53,11 @@ func NewEngine(mpv *Client, lib *library.Store, bus *events.Bus) *Engine {
 func (e *Engine) Run(ctx context.Context) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
+	// Separate, slower ticker so a crash (no chance to run Shutdown) loses at
+	// most a few seconds of playback position, without writing to the queue
+	// database once per second forever.
+	checkpoint := time.NewTicker(5 * time.Second)
+	defer checkpoint.Stop()
 	for {
 		select {
 		case <-ctx.Done():
@@ -64,8 +69,100 @@ func (e *Engine) Run(ctx context.Context) {
 			e.handleEvent(ev)
 		case <-ticker.C:
 			e.bus.Publish(events.Event{Type: "status", Data: e.Status()})
+		case <-checkpoint.C:
+			e.persistQueue()
 		}
 	}
+}
+
+// persistQueue checkpoints the current queue and playback position so
+// Restore can bring it back after a restart or crash. Logged failures are
+// non-fatal — the running queue is unaffected, only its next-startup
+// recovery.
+func (e *Engine) persistQueue() {
+	e.mu.Lock()
+	ids := make([]string, len(e.queue))
+	for i, t := range e.queue {
+		ids[i] = t.ID
+	}
+	pos, posMS := e.pos, e.posMS
+	e.mu.Unlock()
+
+	if err := e.lib.SaveQueueState(ids, pos, posMS); err != nil {
+		slog.Warn("engine: persisting queue", "err", err)
+	}
+}
+
+// Restore reloads the queue and playback position saved by the previous
+// run so a restart or crash doesn't lose what was queued. Tracks no
+// longer in the library (deleted/moved since) are skipped. Restored
+// playback always starts paused — resuming with sound blasting the moment
+// the daemon comes up would be a bad surprise; the user presses play.
+func (e *Engine) Restore() {
+	ids, savedPos, savedPosMS, err := e.lib.LoadQueueState()
+	if err != nil {
+		slog.Warn("engine: loading saved queue", "err", err)
+		return
+	}
+	if len(ids) == 0 {
+		return
+	}
+
+	var tracks []library.Track
+	pos := -1
+	for i, id := range ids {
+		track, found, err := e.lib.GetTrack(id)
+		if err != nil {
+			slog.Warn("engine: resolving saved queue track", "track_id", id, "err", err)
+			continue
+		}
+		if !found {
+			continue
+		}
+		if i == savedPos {
+			pos = len(tracks)
+		}
+		tracks = append(tracks, track)
+	}
+	if len(tracks) == 0 {
+		return
+	}
+	if pos < 0 {
+		pos = 0
+	}
+
+	if err := e.mpv.SetPause(true); err != nil {
+		slog.Warn("engine: restoring queue", "err", err)
+		return
+	}
+	for _, t := range tracks {
+		if err := e.mpv.LoadFile(t.Path, "append"); err != nil {
+			slog.Warn("engine: restoring queue", "track_id", t.ID, "err", err)
+			return
+		}
+	}
+	if err := e.mpv.PlaylistPlayIndex(pos); err != nil {
+		slog.Warn("engine: restoring queue position", "err", err)
+	}
+	if savedPosMS > 0 {
+		// Switching tracks is asynchronous on mpv's side — the command above
+		// acknowledges instantly, but mpv only finishes opening the file (and
+		// would otherwise clobber a too-early seek back to 0) a beat later.
+		// Give it a moment before seeking.
+		time.Sleep(300 * time.Millisecond)
+		if err := e.mpv.Seek(float64(savedPosMS) / 1000); err != nil {
+			slog.Warn("engine: restoring seek position", "err", err)
+		}
+	}
+
+	e.mu.Lock()
+	e.queue = tracks
+	e.pos = pos
+	e.posMS = savedPosMS
+	e.paused = true
+	e.mu.Unlock()
+
+	slog.Info("engine: restored queue", "tracks", len(tracks), "position", pos)
 }
 
 func (e *Engine) handleEvent(ev RawEvent) {
@@ -104,9 +201,21 @@ func (e *Engine) handleEvent(ev RawEvent) {
 	e.mu.Unlock()
 
 	if newlyPlayingTrackID != "" {
+		e.mu.Lock()
+		track := e.queue[e.pos]
+		e.mu.Unlock()
+		slog.Info("engine: now playing", "track_id", track.ID, "title", track.Title, "artist", track.Artist)
+
 		if err := e.lib.RecordPlay(newlyPlayingTrackID); err != nil {
 			slog.Warn("engine: recording play history", "err", err)
 		}
+	}
+
+	// Checkpoint immediately on a track change or pause/resume — the
+	// periodic checkpoint in Run covers position drift during a single
+	// track, but these are the moments most worth not losing on a crash.
+	if name == "playlist-pos" || name == "pause" {
+		e.persistQueue()
 	}
 
 	if name == "pause" || name == "playlist-pos" || name == "mute" {
@@ -173,7 +282,9 @@ func (e *Engine) Enqueue(trackID string) (library.Track, error) {
 	if err := e.mpv.LoadFile(track.Path, mode); err != nil {
 		return library.Track{}, err
 	}
+	slog.Info("engine: enqueue", "track_id", track.ID, "title", track.Title, "artist", track.Artist, "mode", mode)
 	e.bus.Publish(events.Event{Type: "queue_changed", Data: e.Queue()})
+	e.persistQueue()
 	return track, nil
 }
 
@@ -216,7 +327,9 @@ func (e *Engine) PlayNext(trackID string) (library.Track, error) {
 			return library.Track{}, err
 		}
 	}
+	slog.Info("engine: play next", "track_id", track.ID, "title", track.Title, "artist", track.Artist)
 	e.bus.Publish(events.Event{Type: "queue_changed", Data: e.Queue()})
+	e.persistQueue()
 	return track, nil
 }
 
@@ -234,7 +347,9 @@ func (e *Engine) MoveInQueue(from, to int) error {
 	if err := e.mpv.PlaylistMove(from, to); err != nil {
 		return err
 	}
+	slog.Info("engine: move queue", "from", from, "to", to)
 	e.bus.Publish(events.Event{Type: "queue_changed", Data: e.Queue()})
+	e.persistQueue()
 	return nil
 }
 
@@ -265,7 +380,9 @@ func (e *Engine) RemoveFromQueue(index int) error {
 	if err := e.mpv.PlaylistRemove(index); err != nil {
 		return err
 	}
+	slog.Info("engine: remove from queue", "index", index)
 	e.bus.Publish(events.Event{Type: "queue_changed", Data: e.Queue()})
+	e.persistQueue()
 	return nil
 }
 
@@ -282,8 +399,10 @@ func (e *Engine) ClearQueue() error {
 	if err := e.mpv.Stop(); err != nil {
 		return err
 	}
+	slog.Info("engine: clear queue")
 	e.bus.Publish(events.Event{Type: "queue_changed", Data: e.Queue()})
 	e.bus.Publish(events.Event{Type: "status", Data: e.Status()})
+	e.persistQueue()
 	return nil
 }
 
@@ -297,23 +416,47 @@ func (e *Engine) PlayIndex(index int) error {
 	if err := e.mpv.PlaylistPlayIndex(index); err != nil {
 		return err
 	}
+	slog.Info("engine: play index", "index", index)
 	// Switching tracks doesn't clear mpv's pause flag on its own — without
 	// this, picking a track while paused loads it but leaves it paused.
 	return e.mpv.SetPause(false)
 }
 
-func (e *Engine) Play() error     { return e.mpv.SetPause(false) }
-func (e *Engine) Pause() error    { return e.mpv.SetPause(true) }
-func (e *Engine) Stop() error     { return e.mpv.Stop() }
-func (e *Engine) Next() error     { return e.mpv.PlaylistNext() }
-func (e *Engine) Previous() error { return e.mpv.PlaylistPrev() }
+func (e *Engine) Play() error {
+	slog.Info("engine: play")
+	return e.mpv.SetPause(false)
+}
 
-func (e *Engine) Seek(seconds float64) error { return e.mpv.Seek(seconds) }
+func (e *Engine) Pause() error {
+	slog.Info("engine: pause")
+	return e.mpv.SetPause(true)
+}
+
+func (e *Engine) Stop() error {
+	slog.Info("engine: stop")
+	return e.mpv.Stop()
+}
+
+func (e *Engine) Next() error {
+	slog.Info("engine: next")
+	return e.mpv.PlaylistNext()
+}
+
+func (e *Engine) Previous() error {
+	slog.Info("engine: previous")
+	return e.mpv.PlaylistPrev()
+}
+
+func (e *Engine) Seek(seconds float64) error {
+	slog.Info("engine: seek", "seconds", seconds)
+	return e.mpv.Seek(seconds)
+}
 
 func (e *Engine) SetVolume(v float64) error {
 	if v < 0 || v > 100 {
 		return fmt.Errorf("volume must be 0-100")
 	}
+	slog.Info("engine: set volume", "volume", v)
 	return e.mpv.SetVolume(v)
 }
 
@@ -321,6 +464,7 @@ func (e *Engine) SetMute(muted bool) error {
 	if err := e.mpv.SetMute(muted); err != nil {
 		return err
 	}
+	slog.Info("engine: set mute", "muted", muted)
 	e.mu.Lock()
 	e.muted = muted
 	e.mu.Unlock()
@@ -342,6 +486,7 @@ func (e *Engine) SetRepeat(mode string) error {
 		return err
 	}
 
+	slog.Info("engine: set repeat", "mode", mode)
 	e.mu.Lock()
 	e.repeat = mode
 	e.mu.Unlock()
@@ -353,6 +498,8 @@ func (e *Engine) SetRepeat(mode string) error {
 // on. It's a one-shot shuffle of what's left, not a running mode: turning
 // shuffle back off does not restore the pre-shuffle order.
 func (e *Engine) SetShuffle(on bool) error {
+	slog.Info("engine: set shuffle", "shuffle", on)
+
 	e.mu.Lock()
 	if e.shuffle == on {
 		e.mu.Unlock()
@@ -387,11 +534,14 @@ func (e *Engine) SetShuffle(on bool) error {
 
 	e.bus.Publish(events.Event{Type: "queue_changed", Data: e.Queue()})
 	e.bus.Publish(events.Event{Type: "status", Data: e.Status()})
+	e.persistQueue()
 	return nil
 }
 
-// Shutdown stops mpv cleanly.
+// Shutdown stops mpv cleanly, checkpointing the queue one last time first
+// so a graceful restart resumes from the freshest possible position.
 func (e *Engine) Shutdown() {
+	e.persistQueue()
 	if err := e.mpv.Close(); err != nil {
 		slog.Warn("engine: closing mpv", "err", err)
 	}

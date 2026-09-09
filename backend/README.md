@@ -70,7 +70,10 @@ file.
 
 ### Debugging
 
-Logging defaults to Info (startup, scan progress, warnings/errors). For
+Logging defaults to Info: startup, scan progress, warnings/errors, and every
+user-triggered action (playback transport, seek/volume/mute/shuffle/repeat,
+queue changes, favorites/ratings, playlist edits, scans) as it happens — e.g.
+`engine: now playing`, `engine: play next`, `api: add to playlist`. For
 verbose tracing — every HTTP request and every mpv IPC command/response/
 event — pass `-log-level debug` or set `$CANTORD_LOG_LEVEL=debug`:
 
@@ -134,8 +137,11 @@ All endpoints are JSON in/out except `/art/{hash}`.
 | POST | `/api/playback/{play,pause,stop,next,previous}` | Transport control |
 | POST | `/api/playback/seek` `{position_seconds}` | Seek |
 | POST | `/api/playback/volume` `{volume}` | 0-100 |
-| GET/POST | `/api/playlists` | List / save a named playlist |
+| GET/POST | `/api/playlists` | List / save (whole-playlist replace) a named playlist |
 | GET/DELETE | `/api/playlists/{name}` | Load / delete a named playlist |
+| POST | `/api/playlists/{name}/tracks` `{track_id}` | Append one track (creates the playlist if it doesn't exist yet) |
+| DELETE | `/api/playlists/{name}/tracks/{track_id}` | Remove every occurrence of a track from a playlist |
+| POST | `/api/playlists/{name}/rename` `{new_name}` | Rename a playlist |
 | POST | `/api/library/scan` | Trigger a rescan (async; watch `/api/events` or poll status below) |
 | GET | `/api/library/scan/status` | Poll-friendly scan progress: `{running, total, processed, added_or_updated, skipped_unchanged, failed, current_path}` |
 | GET | `/api/events` | SSE: `status`, `queue_changed`, `library_changed`, `scan_progress`, `art_updated` |
@@ -149,7 +155,9 @@ SSE → graceful shutdown cycle):
 - Incremental, fingerprinted library scanning + fs-watch rescans
 - Real stream introspection via ffprobe (sample rate/bit depth/channels/codec)
 - Content-addressed art cache with thumbnail generation and embedded-art extraction
-- mpv-backed gapless playback with a mirrored queue
+- mpv-backed gapless playback with a mirrored queue, checkpointed to the
+  library database so a restart or crash resumes the same queue and
+  position (see `Engine.Restore`/`persistQueue` in `internal/playback`)
 - Full HTTP API above, including SSE push
 
 Not built yet (documented as the obvious next steps, not silently missing):

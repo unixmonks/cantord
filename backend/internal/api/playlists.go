@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 )
 
@@ -32,6 +33,7 @@ func (s *Server) savePlaylist(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	slog.Info("api: save playlist", "name", body.Name, "tracks", len(body.TrackIDs))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -50,10 +52,12 @@ func (s *Server) getPlaylist(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deletePlaylist(w http.ResponseWriter, r *http.Request) {
-	if err := s.lib.DeletePlaylist(r.PathValue("name")); err != nil {
+	name := r.PathValue("name")
+	if err := s.lib.DeletePlaylist(name); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	slog.Info("api: delete playlist", "name", name)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -69,18 +73,23 @@ func (s *Server) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("track_id is required"))
 		return
 	}
-	if err := s.lib.AddToPlaylist(r.PathValue("name"), body.TrackID); err != nil {
+	name := r.PathValue("name")
+	if err := s.lib.AddToPlaylist(name, body.TrackID); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	slog.Info("api: add to playlist", "name", name, "track_id", body.TrackID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
-	if err := s.lib.RemoveFromPlaylist(r.PathValue("name"), r.PathValue("track_id")); err != nil {
+	name := r.PathValue("name")
+	trackID := r.PathValue("track_id")
+	if err := s.lib.RemoveFromPlaylist(name, trackID); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	slog.Info("api: remove from playlist", "name", name, "track_id", trackID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -96,9 +105,11 @@ func (s *Server) renamePlaylist(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("new_name is required"))
 		return
 	}
-	if err := s.lib.RenamePlaylist(r.PathValue("name"), body.NewName); err != nil {
+	oldName := r.PathValue("name")
+	if err := s.lib.RenamePlaylist(oldName, body.NewName); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	slog.Info("api: rename playlist", "from", oldName, "to", body.NewName)
 	w.WriteHeader(http.StatusNoContent)
 }

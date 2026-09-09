@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 )
@@ -52,10 +53,12 @@ func (s *Server) setFavorite(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	if err := s.lib.SetFavorite(r.PathValue("id"), body.Favorite); err != nil {
+	id := r.PathValue("id")
+	if err := s.lib.SetFavorite(id, body.Favorite); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	slog.Info("api: set favorite", "track_id", id, "favorite", body.Favorite)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -71,10 +74,12 @@ func (s *Server) setRating(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("rating must be 0-5"))
 		return
 	}
-	if err := s.lib.SetRating(r.PathValue("id"), body.Rating); err != nil {
+	id := r.PathValue("id")
+	if err := s.lib.SetRating(id, body.Rating); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	slog.Info("api: set rating", "track_id", id, "rating", body.Rating)
 	w.WriteHeader(http.StatusNoContent)
 }
 

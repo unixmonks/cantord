@@ -306,6 +306,14 @@ export function IconCheck(props: IconProps) {
   );
 }
 
+export function IconChevronLeft(props: IconProps) {
+  return (
+    <svg {...base(props)} fill="none">
+      <path d="M12.5 4.5L7 10l5.5 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconWifiOff(props: IconProps) {
   return (
     <svg {...base(props)} fill="none">
