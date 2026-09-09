@@ -48,6 +48,11 @@ design) — so each can be built, deployed, and versioned independently.
 </tr>
 </table>
 
+**Player bar** — persistent across every page, with transport, seek, and
+the animated now-playing indicator:
+
+![Player bar](docs/screenshots/player-bar.png)
+
 **AI assistant** — chat-driven queue/playlist building, live against a real
 library and a real Claude API key (see [Features](#features) below):
 
