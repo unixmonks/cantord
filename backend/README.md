@@ -41,6 +41,19 @@ queueing, library browsing, and album art — for any frontend to build on.
   (`Cache-Control: immutable`) for free. State changes (playback status,
   queue, art becoming available) push over Server-Sent Events at
   `/api/events` so clients don't have to poll.
+- **AI assistant (optional): tool-calling over the existing API surface,
+  nothing more.** `internal/ai` gives an LLM a small tool set —
+  `search_library`, `list_genres`, `get_favorites`, `get_queue`, `set_queue`,
+  `create_playlist`, `add_to_playlist` — each a thin wrapper over
+  `library.Store`/`playback.Engine` methods the HTTP API already exposes,
+  so the model can never do anything a user couldn't already do by hand. It
+  can only act on tracks a search tool actually returned — it never invents
+  a track ID. Currently wired to the Claude API only (`internal/ai/service.go`);
+  swapping providers means implementing against the same tool set, not
+  redesigning the feature. Conversations persist in the same SQLite database
+  as everything else (`ai_conversations`/`ai_messages`), and a chat turn
+  streams out over `POST /api/ai/chat` the same SSE framing `/api/events`
+  uses.
 
 ## Build
 
@@ -67,6 +80,18 @@ cp configs/cantord.example.toml ~/.config/cantord/cantord.toml
 With no `-config`, cantord still runs with built-in defaults (`~/.local/share/cantord/...`)
 but `library.music_dirs` has no sane default and must be set via a config
 file.
+
+To enable the AI assistant, set `$CANTORD_AI_API_KEY` to an Anthropic API
+key (or `ai.api_key` in the config file, though the env var keeps the key
+out of a plaintext file):
+
+```sh
+CANTORD_AI_API_KEY=sk-ant-... ./cantord -config ~/.config/cantord/cantord.toml
+```
+
+Without a key, cantord still starts normally — `GET /api/ai/status` reports
+`configured: false` and `POST /api/ai/chat` returns 503. `ai.model` in the
+config file (default `claude-opus-5`) picks the model.
 
 ### Debugging
 
@@ -145,6 +170,10 @@ All endpoints are JSON in/out except `/art/{hash}`.
 | POST | `/api/library/scan` | Trigger a rescan (async; watch `/api/events` or poll status below) |
 | GET | `/api/library/scan/status` | Poll-friendly scan progress: `{running, total, processed, added_or_updated, skipped_unchanged, failed, current_path}` |
 | GET | `/api/events` | SSE: `status`, `queue_changed`, `library_changed`, `scan_progress`, `art_updated` |
+| GET | `/api/ai/status` | `{configured, provider, model}` |
+| GET | `/api/ai/conversations` | List saved AI chat conversations |
+| GET/DELETE | `/api/ai/conversations/{id}` | Load / delete a conversation's transcript |
+| POST | `/api/ai/chat` `{conversation_id?, message}` | Run one chat turn; response is SSE (`text_delta`, `tool_call`, `tool_result`, `done`, `error`) rather than a single JSON body |
 
 ## What's implemented vs. not
 

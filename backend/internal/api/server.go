@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"cantord/internal/ai"
 	"cantord/internal/art"
 	"cantord/internal/events"
 	"cantord/internal/library"
@@ -21,10 +22,11 @@ type Server struct {
 	engine   *playback.Engine
 	bus      *events.Bus
 	scanner  *library.Scanner
+	ai       *ai.Service
 }
 
-func New(lib *library.Store, artStore *art.Store, engine *playback.Engine, bus *events.Bus, scanner *library.Scanner) *Server {
-	return &Server{lib: lib, artStore: artStore, engine: engine, bus: bus, scanner: scanner}
+func New(lib *library.Store, artStore *art.Store, engine *playback.Engine, bus *events.Bus, scanner *library.Scanner, aiService *ai.Service) *Server {
+	return &Server{lib: lib, artStore: artStore, engine: engine, bus: bus, scanner: scanner, ai: aiService}
 }
 
 func (s *Server) Router() http.Handler {
@@ -75,6 +77,12 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("POST /api/playlists/{name}/tracks", s.addToPlaylist)
 	mux.HandleFunc("DELETE /api/playlists/{name}/tracks/{track_id}", s.removeFromPlaylist)
 	mux.HandleFunc("POST /api/playlists/{name}/rename", s.renamePlaylist)
+
+	mux.HandleFunc("GET /api/ai/status", s.aiStatus)
+	mux.HandleFunc("GET /api/ai/conversations", s.listAiConversations)
+	mux.HandleFunc("GET /api/ai/conversations/{id}", s.getAiConversation)
+	mux.HandleFunc("DELETE /api/ai/conversations/{id}", s.deleteAiConversation)
+	mux.HandleFunc("POST /api/ai/chat", s.aiChat)
 
 	mux.HandleFunc("POST /api/library/scan", s.triggerScan)
 	mux.HandleFunc("GET /api/library/scan/status", s.scanStatus)

@@ -14,6 +14,7 @@ type Config struct {
 	Server   ServerConfig   `toml:"server"`
 	Library  LibraryConfig  `toml:"library"`
 	Playback PlaybackConfig `toml:"playback"`
+	AI       AIConfig       `toml:"ai"`
 }
 
 type ServerConfig struct {
@@ -33,6 +34,17 @@ type PlaybackConfig struct {
 	IPCSocket   string `toml:"ipc_socket"`
 }
 
+// AIConfig configures the optional AI assistant (natural-language queue and
+// playlist building). The API key is deliberately left out of the config
+// file in the default setup — it's read from $CANTORD_AI_API_KEY instead, so
+// a plaintext secret doesn't end up sitting in cantord.toml. Setting APIKey
+// here still works for anyone who prefers that.
+type AIConfig struct {
+	Provider string `toml:"provider"`
+	Model    string `toml:"model"`
+	APIKey   string `toml:"api_key"`
+}
+
 func Default() Config {
 	return Config{
 		Server: ServerConfig{Listen: ":8080"},
@@ -44,6 +56,10 @@ func Default() Config {
 			MPVPath:   "mpv",
 			IPCSocket: "~/.local/share/cantord/mpv.sock",
 		},
+		AI: AIConfig{
+			Provider: "anthropic",
+			Model:    "claude-opus-5",
+		},
 	}
 }
 
@@ -54,6 +70,10 @@ func Load(path string) (Config, error) {
 		if _, err := toml.DecodeFile(path, &cfg); err != nil {
 			return cfg, fmt.Errorf("loading config %s: %w", path, err)
 		}
+	}
+
+	if cfg.AI.APIKey == "" {
+		cfg.AI.APIKey = os.Getenv("CANTORD_AI_API_KEY")
 	}
 
 	var err error

@@ -39,6 +39,8 @@ interface PlayerContextValue {
   artUpdate: ArtUpdate | null;
   toast: string | null;
   showToast: (message: string) => void;
+  aiPanelOpen: boolean;
+  toggleAiPanel: () => void;
   refreshQueue: () => void;
   refreshStatus: () => void;
   play: () => void;
@@ -75,6 +77,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [artUpdate, setArtUpdate] = useState<ArtUpdate | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const toggleAiPanel = useCallback(() => setAiPanelOpen((v) => !v), []);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -184,6 +188,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       artUpdate,
       toast,
       showToast,
+      aiPanelOpen,
+      toggleAiPanel,
       refreshQueue,
       refreshStatus,
       play: () => guard(() => api.play()),
@@ -260,6 +266,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       artUpdate,
       toast,
       showToast,
+      aiPanelOpen,
+      toggleAiPanel,
       refreshQueue,
       refreshStatus,
       guard,

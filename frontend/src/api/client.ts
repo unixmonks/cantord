@@ -1,5 +1,9 @@
 import type {
   Album,
+  AiConversation,
+  AiMessage,
+  AiStatus,
+  AiStreamEvent,
   Page,
   Playlist,
   RepeatMode,
@@ -16,6 +20,25 @@ export class ApiError extends Error {
     super(message);
     this.status = status;
     this.name = "ApiError";
+  }
+}
+
+// parseSSEFrame turns one "event: X\ndata: Y" block (the format both
+// /api/events and /api/ai/chat use) into a typed event. `data` is always
+// one line — encoding/json escapes newlines within the string rather than
+// emitting a literal line break — so no multi-line accumulation is needed.
+function parseSSEFrame(frame: string): AiStreamEvent | null {
+  let type = "";
+  let data = "";
+  for (const line of frame.split("\n")) {
+    if (line.startsWith("event:")) type = line.slice(6).trim();
+    else if (line.startsWith("data:")) data = line.slice(5).trim();
+  }
+  if (!type) return null;
+  try {
+    return { type: type as AiStreamEvent["type"], data: data ? JSON.parse(data) : undefined };
+  } catch {
+    return { type: type as AiStreamEvent["type"], data };
   }
 }
 
@@ -242,6 +265,64 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify({ new_name: newName }),
     });
+  }
+
+  // AI assistant
+  aiStatus() {
+    return request<AiStatus>(this.baseUrl, "/api/ai/status");
+  }
+  listAiConversations() {
+    return request<AiConversation[]>(this.baseUrl, "/api/ai/conversations").then(orEmpty);
+  }
+  async getAiConversation(id: string) {
+    const conv = await request<{ id: string; messages: AiMessage[] }>(this.baseUrl, `/api/ai/conversations/${id}`);
+    return { ...conv, messages: orEmpty(conv.messages) };
+  }
+  deleteAiConversation(id: string) {
+    return request<void>(this.baseUrl, `/api/ai/conversations/${id}`, { method: "DELETE" });
+  }
+  // Streams one chat turn via fetch (not EventSource — it can't send a
+  // POST body), reading the same "event: X\ndata: Y" framing /api/events
+  // uses. Resolves once the server closes the stream (after its `done` or
+  // `error` event).
+  async aiChat(message: string, conversationId: string | undefined, onEvent: (ev: AiStreamEvent) => void, signal?: AbortSignal) {
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/api/ai/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conversationId, message }),
+        signal,
+      });
+    } catch {
+      throw new ApiError(0, `Could not reach cantord at ${this.baseUrl}`);
+    }
+    if (!res.ok || !res.body) {
+      let msg = res.statusText;
+      try {
+        const body = await res.json();
+        if (body?.error) msg = body.error;
+      } catch {
+        // ignore non-JSON error bodies
+      }
+      throw new ApiError(res.status, msg);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let sep: number;
+      while ((sep = buffer.indexOf("\n\n")) !== -1) {
+        const frame = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        const ev = parseSSEFrame(frame);
+        if (ev) onEvent(ev);
+      }
+    }
   }
 
   // Library scan / meta

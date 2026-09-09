@@ -85,3 +85,43 @@ export interface Playlist {
 export interface ApiErrorBody {
   error: string;
 }
+
+export interface AiStatus {
+  configured: boolean;
+  provider: string;
+  model: string;
+}
+
+export interface AiConversation {
+  id: string;
+  title: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface AiMessage {
+  role: string;
+  content: string;
+  created_at: number;
+}
+
+export interface AiToolCall {
+  name: string;
+  input: unknown;
+}
+
+export interface AiToolResult {
+  message: string;
+  tracks?: Track[];
+  track_ids?: string[];
+  playlist_name?: string;
+}
+
+// One item in the /api/ai/chat SSE stream. `data`'s shape depends on `type`:
+// conversation -> {conversation_id}, text_delta -> string, tool_call ->
+// AiToolCall, tool_result -> {name, result: AiToolResult, is_error}, done ->
+// {text}, error -> {error}.
+export interface AiStreamEvent {
+  type: "conversation" | "text_delta" | "tool_call" | "tool_result" | "done" | "error";
+  data: unknown;
+}

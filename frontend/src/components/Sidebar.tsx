@@ -11,6 +11,7 @@ import {
   IconQueue,
   IconSearch,
   IconSettings,
+  IconSparkle,
   IconWifiOff,
 } from "./Icons";
 import { usePlayer } from "../state/PlayerContext";
@@ -36,7 +37,7 @@ const RESUMABLE_ROOTS = ["/albums", "/artists", "/genres", "/playlists", "/searc
 const COLLAPSED_KEY = "sidebarCollapsed";
 
 export function Sidebar() {
-  const { connected } = usePlayer();
+  const { connected, aiPanelOpen, toggleAiPanel } = usePlayer();
   const location = useLocation();
   const [lastPaths, setLastPaths] = useState<Record<string, string>>({});
   const [collapsed, setCollapsed] = useState(() => {
@@ -127,6 +128,27 @@ export function Sidebar() {
             </Link>
           );
         })}
+        <button
+          onClick={toggleAiPanel}
+          title={collapsed ? "Assistant" : undefined}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: collapsed ? "center" : "flex-start",
+            gap: 12,
+            padding: collapsed ? "10px" : "10px 12px",
+            borderRadius: 8,
+            background: aiPanelOpen ? "var(--bg-elev-2)" : "transparent",
+            color: aiPanelOpen ? "var(--text)" : "var(--text-dim)",
+            border: "none",
+            width: "100%",
+            cursor: "pointer",
+            font: "inherit",
+          }}
+        >
+          <IconSparkle size={18} style={{ flexShrink: 0 }} />
+          {!collapsed && <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>Assistant</span>}
+        </button>
       </nav>
       <div style={{ flex: 1 }} />
       {!connected && (

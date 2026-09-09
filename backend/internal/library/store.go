@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -80,6 +81,22 @@ CREATE TABLE IF NOT EXISTS queue_state (
 	position INTEGER NOT NULL,
 	position_ms INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS ai_conversations (
+	id TEXT PRIMARY KEY,
+	title TEXT NOT NULL DEFAULT '',
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ai_messages (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	conversation_id TEXT NOT NULL,
+	role TEXT NOT NULL,
+	content TEXT NOT NULL,
+	created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ai_messages_conv ON ai_messages(conversation_id, id);
 `
 
 func Open(path string) (*Store, error) {
@@ -602,6 +619,80 @@ func (s *Store) TracksByGenre(genre string) ([]Track, error) {
 		WHERE t.genre = ? COLLATE NOCASE
 		ORDER BY t.artist, t.album, t.disc_no, t.track_no
 	`, genre)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tracks []Track
+	for rows.Next() {
+		t, err := scanTrack(rows)
+		if err != nil {
+			return nil, err
+		}
+		tracks = append(tracks, t)
+	}
+	return tracks, nil
+}
+
+// TrackFilter combines the filters Search (free-text OR match) and
+// TracksByGenre (exact genre only) each handle separately — a caller (the
+// AI tool layer, mainly) can AND together a free-text query, genre, artist,
+// and year range in one pass instead of intersecting several query results
+// itself.
+type TrackFilter struct {
+	Query    string
+	Genre    string
+	Artist   string
+	YearFrom int
+	YearTo   int
+	Limit    int
+}
+
+func (s *Store) FilterTracks(f TrackFilter) ([]Track, error) {
+	limit := f.Limit
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+
+	var where []string
+	var args []any
+	if f.Query != "" {
+		where = append(where, "(t.title LIKE ? OR t.artist LIKE ? OR t.album LIKE ?)")
+		p := "%" + f.Query + "%"
+		args = append(args, p, p, p)
+	}
+	if f.Genre != "" {
+		where = append(where, "t.genre = ? COLLATE NOCASE")
+		args = append(args, f.Genre)
+	}
+	if f.Artist != "" {
+		where = append(where, "(t.artist LIKE ? OR t.album_artist LIKE ?)")
+		p := "%" + f.Artist + "%"
+		args = append(args, p, p)
+	}
+	if f.YearFrom > 0 {
+		where = append(where, "t.year >= ?")
+		args = append(args, f.YearFrom)
+	}
+	if f.YearTo > 0 {
+		where = append(where, "t.year <= ?")
+		args = append(args, f.YearTo)
+	}
+
+	clause := ""
+	if len(where) > 0 {
+		clause = "WHERE " + strings.Join(where, " AND ")
+	}
+	args = append(args, limit)
+
+	rows, err := s.db.Query(`
+		SELECT `+trackColumns+`
+		FROM tracks t `+trackJoins+`
+		`+clause+`
+		ORDER BY t.artist, t.year, t.album, t.disc_no, t.track_no
+		LIMIT ?
+	`, args...)
 	if err != nil {
 		return nil, err
 	}

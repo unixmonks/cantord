@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { PlayerBar } from "./PlayerBar";
 import { Toast } from "./Toast";
+import { AiPanel } from "./AiPanel";
 
 // Keyed by route (pathname + search), not history entry, so returning to a
 // page restores its scroll position no matter how you got there — browser
@@ -56,6 +57,7 @@ export function Layout() {
       </div>
       <PlayerBar />
       <Toast />
+      <AiPanel />
     </div>
   );
 }

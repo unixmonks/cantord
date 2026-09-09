@@ -1,11 +1,21 @@
 package library
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"strings"
 	"unicode"
 )
+
+// randomID returns a random hex identifier for records with no stable
+// content to hash (e.g. AI conversations), unlike tracks/albums whose IDs
+// are content-addressed via hashHex.
+func randomID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
 
 func hashHex(parts ...string) string {
 	h := sha256.New()

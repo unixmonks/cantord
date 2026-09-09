@@ -20,3 +20,13 @@ ipc_socket = "~/.local/share/cantord/mpv.sock"
 #   audio_device = "alsa/hw:CARD=DAC,DEV=0"        # bypasses dmix resampling
 #   ao = "oss"                                     # FreeBSD
 #   audio_device = "oss//dev/dsp"
+
+# Optional: the AI assistant (natural-language queue/playlist building).
+# Leave this whole section out and cantord runs fine without it —
+# GET /api/ai/status reports configured: false.
+[ai]
+provider = "anthropic"
+model = "claude-opus-5"
+# api_key left unset on purpose — set $CANTORD_AI_API_KEY instead so the key
+# doesn't sit in a plaintext file. Uncomment only if you'd rather keep it here:
+# api_key = "sk-ant-..."

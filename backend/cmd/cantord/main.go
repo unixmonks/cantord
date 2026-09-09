@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"cantord/internal/ai"
 	"cantord/internal/api"
 	"cantord/internal/art"
 	"cantord/internal/config"
@@ -70,7 +71,12 @@ func main() {
 	engine.Restore()
 	go engine.Run(ctx)
 
-	server := api.New(lib, artStore, engine, bus, scanner)
+	aiService := ai.New(cfg.AI.APIKey, cfg.AI.Model, lib, engine)
+	if !aiService.Configured() {
+		slog.Info("ai assistant not configured (set CANTORD_AI_API_KEY to enable)")
+	}
+
+	server := api.New(lib, artStore, engine, bus, scanner, aiService)
 	httpServer := &http.Server{Addr: cfg.Server.Listen, Handler: server.Router()}
 
 	go func() {

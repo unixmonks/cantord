@@ -314,6 +314,27 @@ export function IconChevronLeft(props: IconProps) {
   );
 }
 
+export function IconSparkle(props: IconProps) {
+  return (
+    <svg {...base(props)} fill="none">
+      <path
+        d="M10 3l1.4 4.6L16 9l-4.6 1.4L10 15l-1.4-4.6L4 9l4.6-1.4L10 3z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function IconSend(props: IconProps) {
+  return (
+    <svg {...base(props)} fill="none">
+      <path d="M3.5 10l13-6-6 13-1.6-5.4L3.5 10z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconWifiOff(props: IconProps) {
   return (
     <svg {...base(props)} fill="none">
