@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"cantord/internal/library"
 	"cantord/internal/playback"
@@ -81,8 +82,9 @@ func tools() []Tool {
 				if err != nil {
 					return ToolResult{}, err
 				}
-				b, _ := json.Marshal(genres)
-				return ToolResult{Message: string(b)}, nil
+				return ToolResult{
+					Message: fmt.Sprintf("%d genre(s) in the library: %s", len(genres), strings.Join(genres, ", ")),
+				}, nil
 			},
 		},
 		{
