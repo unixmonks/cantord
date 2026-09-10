@@ -1,8 +1,11 @@
 package main
 
-import "github.com/charmbracelet/bubbles/key"
+import (
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
+)
 
-// globalKeys are the app-wide vim-style bindings handled by the root model
+// globalKeyMap are the app-wide vim-style bindings handled by the root model
 // before (or instead of) forwarding a key to the active screen's list.
 type globalKeyMap struct {
 	tab1, tab2, tab3, tab4, tab5 key.Binding
@@ -30,39 +33,84 @@ type globalKeyMap struct {
 	help                         key.Binding
 }
 
-var keys = globalKeyMap{
-	tab1: key.NewBinding(key.WithKeys("1"), key.WithHelp("1", "artists")),
-	tab2: key.NewBinding(key.WithKeys("2"), key.WithHelp("2", "albums")),
-	tab3: key.NewBinding(key.WithKeys("3"), key.WithHelp("3", "genres")),
-	tab4: key.NewBinding(key.WithKeys("4"), key.WithHelp("4", "queue")),
-	tab5: key.NewBinding(key.WithKeys("5"), key.WithHelp("5", "playlists")),
+// keys and listKeys are populated at startup by applyKeyConfig, from
+// DefaultKeyConfig merged with any user overrides (see keyconfig.go). Until
+// then they're zero-value bindings that match nothing.
+var keys globalKeyMap
+var listKeys list.KeyMap
 
-	nextTab: key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next menu")),
-	prevTab: key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "prev menu")),
+// applyKeyConfig builds keys and listKeys from cfg. It must run before the
+// program starts reading input.
+func applyKeyConfig(cfg KeyConfig) {
+	keys = globalKeyMap{
+		tab1: bindKeys(cfg.Tab1, "", "artists"),
+		tab2: bindKeys(cfg.Tab2, "", "albums"),
+		tab3: bindKeys(cfg.Tab3, "", "genres"),
+		tab4: bindKeys(cfg.Tab4, "", "queue"),
+		tab5: bindKeys(cfg.Tab5, "", "playlists"),
 
-	back:      key.NewBinding(key.WithKeys("esc", "backspace", "h"), key.WithHelp("h", "back")),
-	into:      key.NewBinding(key.WithKeys("l"), key.WithHelp("l", "into")),
-	quit:      key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
-	forceQuit: key.NewBinding(key.WithKeys("ctrl+c")),
+		nextTab: bindKeys(cfg.NextTab, "", "next menu"),
+		prevTab: bindKeys(cfg.PrevTab, "", "prev menu"),
 
-	selectItem: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "play")),
+		back:      bindKeys(cfg.Back, "", "back"),
+		into:      bindKeys(cfg.Into, "", "into"),
+		quit:      bindKeys(cfg.Quit, "", "quit"),
+		forceQuit: bindKeys(cfg.ForceQuit, "", "force quit"),
 
-	playPause: key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "play/pause")),
-	next:      key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "next track")),
-	prev:      key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "prev track")),
-	volUp:     key.NewBinding(key.WithKeys("+", "="), key.WithHelp("+", "vol up")),
-	volDown:   key.NewBinding(key.WithKeys("-", "_"), key.WithHelp("-", "vol down")),
-	mute:      key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "mute")),
-	shuffle:   key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "shuffle")),
-	repeat:    key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "repeat")),
+		selectItem: bindKeys(cfg.SelectItem, "", "play"),
 
-	enqueue:       key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "add to queue")),
-	addToPlaylist: key.NewBinding(key.WithKeys("A"), key.WithHelp("A", "add to playlist")),
-	remove:        key.NewBinding(key.WithKeys("d"), key.WithHelp("dd", "remove")),
-	moveDown:      key.NewBinding(key.WithKeys("J"), key.WithHelp("J", "move down")),
-	moveUp:        key.NewBinding(key.WithKeys("K"), key.WithHelp("K", "move up")),
+		playPause: bindKeys(cfg.PlayPause, "", "play/pause"),
+		next:      bindKeys(cfg.Next, "", "next track"),
+		prev:      bindKeys(cfg.Prev, "", "prev track"),
+		volUp:     bindKeys(cfg.VolUp, "", "vol up"),
+		volDown:   bindKeys(cfg.VolDown, "", "vol down"),
+		mute:      bindKeys(cfg.Mute, "", "mute"),
+		shuffle:   bindKeys(cfg.Shuffle, "", "shuffle"),
+		repeat:    bindKeys(cfg.Repeat, "", "repeat"),
 
-	toggleCover: key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "toggle cover")),
+		enqueue:       bindKeys(cfg.Enqueue, "", "add to queue"),
+		addToPlaylist: bindKeys(cfg.AddToPlaylist, "", "add to playlist"),
+		// remove is a double-tap (dd) gesture — the binding itself only
+		// needs the single configured key, but the help label calls that out.
+		remove:   bindKeys(cfg.Remove, removeLabel(cfg.Remove), "remove"),
+		moveDown: bindKeys(cfg.MoveDown, "", "move down"),
+		moveUp:   bindKeys(cfg.MoveUp, "", "move up"),
 
-	help: key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+		toggleCover: bindKeys(cfg.ToggleCover, "", "toggle cover"),
+
+		help: bindKeys(cfg.Help, "", "help"),
+	}
+
+	lm := list.DefaultKeyMap()
+	lm.CursorUp = bindKeys(cfg.CursorUp, "", "up")
+	lm.CursorDown = bindKeys(cfg.CursorDown, "", "down")
+	lm.PrevPage = bindKeys(cfg.PrevPage, "", "prev page")
+	lm.NextPage = bindKeys(cfg.NextPage, "", "next page")
+	lm.GoToStart = bindKeys(cfg.GoToStart, "", "go to start")
+	lm.GoToEnd = bindKeys(cfg.GoToEnd, "", "go to end")
+	lm.Filter = bindKeys(cfg.Filter, "", "filter")
+	lm.ClearFilter = bindKeys(cfg.ClearFilter, "", "clear filter")
+	// We handle quitting ourselves so quit/force-quit don't fall through to
+	// the list's own (would-be) tea.Quit, and the help view is off so its
+	// toggle keys would otherwise be dead bindings that still eat a keypress.
+	lm.Quit = key.Binding{}
+	lm.ForceQuit = key.Binding{}
+	lm.ShowFullHelp = key.Binding{}
+	lm.CloseFullHelp = key.Binding{}
+	listKeys = lm
+
+	buildHelpSections()
+}
+
+func init() {
+	applyKeyConfig(DefaultKeyConfig())
+}
+
+// removeLabel spells the remove binding's help text as a double-tap (its
+// first configured key pressed twice), matching the dd gesture in model.go.
+func removeLabel(cfgKeys []string) string {
+	if len(cfgKeys) == 0 {
+		return ""
+	}
+	return keyLabel(cfgKeys[0]) + keyLabel(cfgKeys[0])
 }

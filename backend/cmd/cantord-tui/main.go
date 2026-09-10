@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -18,10 +19,17 @@ func main() {
 	if server == "" {
 		server = "http://localhost:8080"
 	}
-	args := os.Args[1:]
-	if len(args) >= 2 && args[0] == "-server" {
-		server = args[1]
+	keysPath := os.Getenv("CANTORD_TUI_KEYS")
+	flag.StringVar(&server, "server", server, "cantord daemon address")
+	flag.StringVar(&keysPath, "keys", keysPath, "path to a TOML file of keyboard shortcut overrides (optional)")
+	flag.Parse()
+
+	keyCfg, err := LoadKeyConfig(keysPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "cantord-tui:", err)
+		os.Exit(1)
 	}
+	applyKeyConfig(keyCfg)
 
 	client := NewClient(server)
 

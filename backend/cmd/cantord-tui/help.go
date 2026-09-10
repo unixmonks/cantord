@@ -21,57 +21,65 @@ func fromBinding(b key.Binding) helpEntry {
 	return helpEntry{key: h.Key, desc: h.Desc}
 }
 
-// helpSections lists every shortcut in the app. The list-navigation rows
-// (cursor movement, paging, filtering, go-to-start/end) live on list.Model
-// itself rather than in the global keys struct, so those are spelled out
-// by hand here to match what's actually wired up in newListWithDelegate.
-var helpSections = []struct {
+// helpSections lists every shortcut in the app. It's (re)built by
+// buildHelpSections, which applyKeyConfig calls after loading keys and
+// listKeys, so this can't drift out of sync with keys.go/keyconfig.go.
+var helpSections []struct {
 	title   string
 	entries []helpEntry
-}{
-	{"Navigate", []helpEntry{
-		fromBinding(keys.into),
-		fromBinding(keys.back),
-		fromBinding(keys.selectItem),
-		{"↑/k  ↓/j", "move cursor"},
-		{"g/home  G/end", "jump to top/bottom"},
-		{"H/←/PgUp/^u", "prev page"},
-		{"L/→/PgDn/^d", "next page"},
-		{"/", "filter"},
-		{"esc", "clear filter"},
-	}},
-	{"Sections", []helpEntry{
-		fromBinding(keys.tab1),
-		fromBinding(keys.tab2),
-		fromBinding(keys.tab3),
-		fromBinding(keys.tab4),
-		fromBinding(keys.tab5),
-		fromBinding(keys.nextTab),
-		fromBinding(keys.prevTab),
-	}},
-	{"Playback", []helpEntry{
-		fromBinding(keys.playPause),
-		fromBinding(keys.next),
-		fromBinding(keys.prev),
-		fromBinding(keys.volUp),
-		fromBinding(keys.volDown),
-		fromBinding(keys.mute),
-		fromBinding(keys.shuffle),
-		fromBinding(keys.repeat),
-	}},
-	{"Library", []helpEntry{
-		fromBinding(keys.enqueue),
-		fromBinding(keys.addToPlaylist),
-		fromBinding(keys.remove),
-		fromBinding(keys.moveDown),
-		fromBinding(keys.moveUp),
-		fromBinding(keys.toggleCover),
-	}},
-	{"App", []helpEntry{
-		fromBinding(keys.help),
-		fromBinding(keys.quit),
-		{"ctrl+c", "force quit"},
-	}},
+}
+
+func buildHelpSections() {
+	helpSections = []struct {
+		title   string
+		entries []helpEntry
+	}{
+		{"Navigate", []helpEntry{
+			fromBinding(keys.into),
+			fromBinding(keys.back),
+			fromBinding(keys.selectItem),
+			fromBinding(listKeys.CursorUp),
+			fromBinding(listKeys.CursorDown),
+			fromBinding(listKeys.GoToStart),
+			fromBinding(listKeys.GoToEnd),
+			fromBinding(listKeys.PrevPage),
+			fromBinding(listKeys.NextPage),
+			fromBinding(listKeys.Filter),
+			fromBinding(listKeys.ClearFilter),
+		}},
+		{"Sections", []helpEntry{
+			fromBinding(keys.tab1),
+			fromBinding(keys.tab2),
+			fromBinding(keys.tab3),
+			fromBinding(keys.tab4),
+			fromBinding(keys.tab5),
+			fromBinding(keys.nextTab),
+			fromBinding(keys.prevTab),
+		}},
+		{"Playback", []helpEntry{
+			fromBinding(keys.playPause),
+			fromBinding(keys.next),
+			fromBinding(keys.prev),
+			fromBinding(keys.volUp),
+			fromBinding(keys.volDown),
+			fromBinding(keys.mute),
+			fromBinding(keys.shuffle),
+			fromBinding(keys.repeat),
+		}},
+		{"Library", []helpEntry{
+			fromBinding(keys.enqueue),
+			fromBinding(keys.addToPlaylist),
+			fromBinding(keys.remove),
+			fromBinding(keys.moveDown),
+			fromBinding(keys.moveUp),
+			fromBinding(keys.toggleCover),
+		}},
+		{"App", []helpEntry{
+			fromBinding(keys.help),
+			fromBinding(keys.quit),
+			fromBinding(keys.forceQuit),
+		}},
+	}
 }
 
 // renderHelp centers a box listing every keyboard shortcut, grouped into

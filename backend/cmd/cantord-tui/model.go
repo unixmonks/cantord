@@ -538,7 +538,7 @@ func (m *Model) ensureArtLoaded() tea.Cmd {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if msg.String() == "ctrl+c" {
+	if key.Matches(msg, keys.forceQuit) {
 		return m, tea.Quit
 	}
 
@@ -563,8 +563,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.showHelp {
-		switch msg.String() {
-		case "?", "esc", "q":
+		if key.Matches(msg, keys.help) || key.Matches(msg, keys.back) || key.Matches(msg, keys.quit) {
 			m.showHelp = false
 		}
 		return m, nil
@@ -580,7 +579,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	wasPendingD := m.pendingD
 	m.pendingD = false
-	if wasPendingD && msg.String() == "d" {
+	if wasPendingD && key.Matches(msg, keys.remove) {
 		return m, m.removeCurrent()
 	}
 

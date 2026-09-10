@@ -1,0 +1,52 @@
+# Keyboard shortcut overrides for cantord-tui. Pass with
+# `cantord-tui -keys /path/to/this/file` (or $CANTORD_TUI_KEYS). Any key left
+# out keeps its built-in binding — see DefaultKeyConfig in keyconfig.go.
+#
+# Each value is a list of key names as reported by bubbletea, e.g. "j",
+# "ctrl+d", "shift+tab", "esc", "+"; write "space" for the space bar. Listing
+# more than one key just binds all of them to the same action.
+
+# Sections
+tab1     = ["1"]
+tab2     = ["2"]
+tab3     = ["3"]
+tab4     = ["4"]
+tab5     = ["5"]
+next_tab = ["tab"]
+prev_tab = ["shift+tab"]
+
+# Navigate
+back        = ["esc", "backspace", "h"]
+into        = ["l"]
+select_item = ["enter"]
+cursor_up   = ["up", "k"]
+cursor_down = ["down", "j"]
+prev_page   = ["left", "H", "pgup", "ctrl+u"]
+next_page   = ["right", "L", "pgdown", "ctrl+d"]
+go_to_start = ["g", "home"]
+go_to_end   = ["G", "end"]
+filter      = ["/"]
+clear_filter = ["esc"]
+
+# Playback
+play_pause = ["space"]
+next       = ["n"]
+prev       = ["p"]
+vol_up     = ["+", "="]
+vol_down   = ["-", "_"]
+mute       = ["m"]
+shuffle    = ["s"]
+repeat     = ["r"]
+
+# Library
+enqueue         = ["a"]
+add_to_playlist = ["A"]
+remove          = ["d"]
+move_down       = ["J"]
+move_up         = ["K"]
+toggle_cover    = ["c"]
+
+# App
+help       = ["?"]
+quit       = ["q"]
+force_quit = ["ctrl+c"]

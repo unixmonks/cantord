@@ -4,7 +4,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -70,20 +69,9 @@ func newListWithDelegate(title string, delegate list.ItemDelegate) list.Model {
 	l.SetShowPagination(false)
 	l.SetShowHelp(false)
 
-	// Free "d"/"u"/"f"/"b" from the built-in pager so they're available for
-	// our own bindings (dd to remove). Lowercase h/l are reserved globally
-	// for tree navigation (back/into), so paging moves to uppercase H/L,
-	// the arrow/page keys, and vim's own ctrl+u/ctrl+d.
-	l.KeyMap.PrevPage = key.NewBinding(key.WithKeys("left", "H", "pgup", "ctrl+u"), key.WithHelp("H/pgup/^u", "prev page"))
-	l.KeyMap.NextPage = key.NewBinding(key.WithKeys("right", "L", "pgdown", "ctrl+d"), key.WithHelp("L/pgdn/^d", "next page"))
-	// We handle quitting ourselves so "q"/"esc" don't fall through to the
-	// list's own (would-be) tea.Quit.
-	l.KeyMap.Quit = key.Binding{}
-	l.KeyMap.ForceQuit = key.Binding{}
-	// The help view is off, so its toggle keys would otherwise be dead
-	// bindings that still eat a keypress for nothing.
-	l.KeyMap.ShowFullHelp = key.Binding{}
-	l.KeyMap.CloseFullHelp = key.Binding{}
+	// listKeys is built from the (possibly user-overridden) key config in
+	// keys.go/keyconfig.go — see applyKeyConfig for quit/help/paging details.
+	l.KeyMap = listKeys
 	return l
 }
 
