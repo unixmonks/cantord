@@ -198,9 +198,9 @@ func cmdRemoveFromPlaylist(c *Client, name, trackID string) tea.Cmd {
 // --- footer rendering ---
 
 func renderFooter(st Status, width int, connected bool) string {
-	conn := connectedStyle.Render("● connected")
+	conn := connectedStyle.Render("●")
 	if !connected {
-		conn = disconnectedStyle.Render("● disconnected")
+		conn = disconnectedStyle.Render("●")
 	}
 
 	// footerStyle pads 1 column on each side, so content must be sized to

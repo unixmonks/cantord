@@ -62,6 +62,9 @@ type Model struct {
 
 	// showCoverArt is the "c" toggle for the Queue screen's art pane.
 	showCoverArt bool
+
+	// showHelp is the "?" full-screen shortcut reference.
+	showHelp bool
 }
 
 func newModel(client *Client, events chan tea.Msg) Model {
@@ -559,6 +562,14 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	if m.showHelp {
+		switch msg.String() {
+		case "?", "esc", "q":
+			m.showHelp = false
+		}
+		return m, nil
+	}
+
 	cur := m.currentScreen()
 
 	if cur != nil && cur.list.FilterState() == list.Filtering {
@@ -635,6 +646,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showCoverArt = !m.showCoverArt
 		m.resizeScreen(m.queueScreen())
 		return m, nil
+
+	case key.Matches(msg, keys.help):
+		m.showHelp = true
+		return m, nil
 	}
 
 	if cur != nil {
@@ -659,6 +674,10 @@ func (m Model) View() string {
 	if m.prompt != nil {
 		box := promptBoxStyle.Render(fmt.Sprintf("Add to playlist\n\n%s\n\n%s", m.prompt.trackLabel, m.prompt.input.View()))
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+	}
+
+	if m.showHelp {
+		return renderHelp(m.width, m.height)
 	}
 
 	cur := m.tabs[m.activeTab]

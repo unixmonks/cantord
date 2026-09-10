@@ -27,6 +27,7 @@ type globalKeyMap struct {
 	moveDown                     key.Binding
 	moveUp                       key.Binding
 	toggleCover                  key.Binding
+	help                         key.Binding
 }
 
 var keys = globalKeyMap{
@@ -62,4 +63,6 @@ var keys = globalKeyMap{
 	moveUp:        key.NewBinding(key.WithKeys("K"), key.WithHelp("K", "move up")),
 
 	toggleCover: key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "toggle cover")),
+
+	help: key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 }
