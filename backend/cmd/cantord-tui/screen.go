@@ -1,6 +1,9 @@
 package main
 
 import (
+	"sort"
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -126,10 +129,13 @@ func newArtistsScreen(c *Client) (screen, tea.Cmd) {
 }
 
 func newAlbumsByArtistScreen(c *Client, artist string) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenAlbumsByArtist, title: artist, ctx: artist, list: newList(artist)}
+	s := screen{id: newScreenID(), kind: screenAlbumsByArtist, title: artist, ctx: artist, list: newCompactList(artist)}
 	id := s.id
 	return s, func() tea.Msg {
 		albums, err := c.AlbumsByArtist(artist)
+		sort.Slice(albums, func(i, j int) bool {
+			return strings.ToLower(albums[i].Name) < strings.ToLower(albums[j].Name)
+		})
 		items := make([]item, len(albums))
 		for i, a := range albums {
 			items[i] = albumItem(a)
@@ -139,7 +145,7 @@ func newAlbumsByArtistScreen(c *Client, artist string) (screen, tea.Cmd) {
 }
 
 func newAlbumsScreen(c *Client) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenAlbums, title: "Albums", list: newList("Albums")}
+	s := screen{id: newScreenID(), kind: screenAlbums, title: "Albums", list: newCompactList("Albums")}
 	return s, loadAlbumsPage(c, s.id, "")
 }
 
@@ -155,13 +161,20 @@ func loadAlbumsPage(c *Client, id int, cursor string) tea.Cmd {
 }
 
 func newAlbumTracksScreen(c *Client, album Album) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenAlbumTracks, title: album.Name, ctx: album.ID, list: newList(album.Name)}
+	s := screen{id: newScreenID(), kind: screenAlbumTracks, title: album.Name, ctx: album.ID, list: newCompactList(album.Name)}
 	id := s.id
 	return s, func() tea.Msg {
 		tracks, err := c.AlbumTracks(album.ID)
+		showDisc := false
+		for _, t := range tracks {
+			if t.DiscNo != tracks[0].DiscNo {
+				showDisc = true
+				break
+			}
+		}
 		items := make([]item, len(tracks))
 		for i, t := range tracks {
-			items[i] = trackItem(t)
+			items[i] = albumTrackItem(t, showDisc)
 		}
 		return itemsLoadedMsg{screenID: id, items: items, err: err}
 	}
@@ -194,7 +207,7 @@ func newGenreTracksScreen(c *Client, genre string) (screen, tea.Cmd) {
 }
 
 func newQueueScreen(c *Client) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenQueue, title: "Queue", list: newList("Queue")}
+	s := screen{id: newScreenID(), kind: screenQueue, title: "Queue", list: newListWithDelegate("Queue", queueDelegate{})}
 	return s, loadQueue(c, s.id)
 }
 

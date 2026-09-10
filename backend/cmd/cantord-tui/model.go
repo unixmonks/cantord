@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -357,6 +358,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				merged = append(merged, items...)
 				items = merged
 			}
+			// The API paginates albums ordered by artist then name; re-sort
+			// by album name alone since that's the order the album list
+			// shows.
+			sort.Slice(items, func(i, j int) bool {
+				return strings.ToLower(items[i].title) < strings.ToLower(items[j].title)
+			})
 			s.nextCursor = msg.nextCursor
 			cmd := setItems(&s.list, items)
 			if msg.err != nil {

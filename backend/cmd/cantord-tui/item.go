@@ -73,6 +73,28 @@ func trackItem(t Track) item {
 	}
 }
 
+// albumTrackItem is trackItem's counterpart for the album-tracks screen:
+// artist/album/duration/codec are all implied or peripheral there, so the
+// title is just the track number, artist, and title. showDisc adds a disc
+// prefix ("1-01") for multi-disc albums, where track numbers alone repeat
+// per disc.
+func albumTrackItem(t Track, showDisc bool) item {
+	fav := ""
+	if t.Favorite {
+		fav = "♥ "
+	}
+	num := fmt.Sprintf("%02d", t.TrackNo)
+	if showDisc {
+		num = fmt.Sprintf("%d-%02d", t.DiscNo, t.TrackNo)
+	}
+	return item{
+		kind:  itemTrack,
+		id:    t.ID,
+		title: fmt.Sprintf("%s %s - %s%s", num, t.Artist, fav, t.Title),
+		track: &t,
+	}
+}
+
 func formatDuration(ms int) string {
 	s := ms / 1000
 	return fmt.Sprintf("%d:%02d", s/60, s%60)
