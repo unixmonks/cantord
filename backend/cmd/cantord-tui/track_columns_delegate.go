@@ -32,7 +32,7 @@ type trackColumnsDelegate struct {
 const (
 	trackColDurWidth = 5 // fits up to "99:59"
 	trackColGapMax   = 2 // comfortable spacing between columns
-	trackColGapMin   = 0 // spacing gets squeezed to this before any text does
+	trackColGapMin   = 1 // spacing never squeezes past this, even before text does
 	trackColMarkerW  = 2 // "▶ " / "  " now-playing marker
 
 	trackColArtistBase = 18
