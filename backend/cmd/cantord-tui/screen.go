@@ -45,20 +45,6 @@ func newScreenID() int {
 	return nextScreenID
 }
 
-func newList(title string) list.Model {
-	delegate := list.NewDefaultDelegate()
-	delegate.SetSpacing(0)
-	// Indent the description (year/artist/track-count, or artist/duration/
-	// format) a couple columns further in than the title above it, so the
-	// two lines read as a clear title/subtitle pair rather than two flush
-	// left edges.
-	const descIndent = 2
-	delegate.Styles.NormalDesc = delegate.Styles.NormalDesc.PaddingLeft(delegate.Styles.NormalDesc.GetPaddingLeft() + descIndent)
-	delegate.Styles.SelectedDesc = delegate.Styles.SelectedDesc.PaddingLeft(delegate.Styles.SelectedDesc.GetPaddingLeft() + descIndent)
-	delegate.Styles.DimmedDesc = delegate.Styles.DimmedDesc.PaddingLeft(delegate.Styles.DimmedDesc.GetPaddingLeft() + descIndent)
-	return newListWithDelegate(title, delegate)
-}
-
 // newCompactList is for screens whose items carry no description (Artists,
 // Genres, Playlists) — a single-line-per-item delegate instead of the
 // default's title+description pair, so the list isn't full of empty second
@@ -191,7 +177,7 @@ func newGenresScreen(c *Client) (screen, tea.Cmd) {
 }
 
 func newGenreTracksScreen(c *Client, genre string) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenGenreTracks, title: genre, ctx: genre, list: newList(genre)}
+	s := screen{id: newScreenID(), kind: screenGenreTracks, title: genre, ctx: genre, list: newListWithDelegate(genre, trackColumnsDelegate{})}
 	id := s.id
 	return s, func() tea.Msg {
 		tracks, err := c.GenreTracks(genre)
@@ -204,7 +190,7 @@ func newGenreTracksScreen(c *Client, genre string) (screen, tea.Cmd) {
 }
 
 func newQueueScreen(c *Client, playingIndex *int) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenQueue, title: "Queue", list: newListWithDelegate("Queue", queueDelegate{playingIndex: playingIndex})}
+	s := screen{id: newScreenID(), kind: screenQueue, title: "Queue", list: newListWithDelegate("Queue", trackColumnsDelegate{playingIndex: playingIndex})}
 	return s, loadQueue(c, s.id)
 }
 
@@ -233,7 +219,7 @@ func newPlaylistsScreen(c *Client) (screen, tea.Cmd) {
 }
 
 func newPlaylistTracksScreen(c *Client, name string) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenPlaylistTracks, title: name, ctx: name, list: newList(name)}
+	s := screen{id: newScreenID(), kind: screenPlaylistTracks, title: name, ctx: name, list: newListWithDelegate(name, trackColumnsDelegate{})}
 	id := s.id
 	return s, func() tea.Msg {
 		tracks, err := c.Playlist(name)
