@@ -14,11 +14,19 @@ import (
 // use. Track and Album get fixed base widths; Track absorbs whatever space
 // is left over (growing on a wide terminal, shrinking first as it narrows),
 // and Album only starts shrinking once Track has hit its floor.
-type queueDelegate struct{}
+//
+// playingIndex points at the Model's shared "currently playing" index (see
+// Model.playingIndex) rather than being copied in at construction time, so
+// this delegate keeps seeing live updates as playback advances without
+// needing the list to be rebuilt.
+type queueDelegate struct {
+	playingIndex *int
+}
 
 const (
 	queueDurWidth = 5 // fits up to "99:59"
 	queueGap      = 2 // spaces between columns
+	queueMarkerW  = 2 // "▶ " / "  " now-playing marker
 
 	queueArtistBase = 18
 	queueAlbumBase  = 20
@@ -84,7 +92,7 @@ func padCell(s string, w int, alignRight bool) string {
 	return s
 }
 
-func (queueDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+func (d queueDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	it, ok := listItem.(item)
 	if !ok || it.track == nil {
 		return
@@ -92,7 +100,7 @@ func (queueDelegate) Render(w io.Writer, m list.Model, index int, listItem list.
 	track := it.track
 
 	styles := list.NewDefaultItemStyles()
-	textwidth := m.Width() - styles.NormalTitle.GetPaddingLeft() - styles.NormalTitle.GetPaddingRight()
+	textwidth := m.Width() - styles.NormalTitle.GetPaddingLeft() - styles.NormalTitle.GetPaddingRight() - queueMarkerW
 	if textwidth <= 0 {
 		return
 	}
@@ -104,8 +112,14 @@ func (queueDelegate) Render(w io.Writer, m list.Model, index int, listItem list.
 		fav = "♥ "
 	}
 
+	isPlaying := d.playingIndex != nil && *d.playingIndex == index
+	marker := "  "
+	if isPlaying {
+		marker = "▶ "
+	}
+
 	gap := strings.Repeat(" ", queueGap)
-	line := padCell(track.Artist, artistW, false) + gap +
+	line := marker + padCell(track.Artist, artistW, false) + gap +
 		padCell(fav+track.Title, trackW, false) + gap +
 		padCell(track.Album, albumW, false) + gap +
 		padCell(formatDuration(track.DurationMS), queueDurWidth, true)
@@ -115,6 +129,8 @@ func (queueDelegate) Render(w io.Writer, m list.Model, index int, listItem list.
 		line = styles.DimmedTitle.Render(line)
 	case index == m.Index() && m.FilterState() != list.Filtering:
 		line = styles.SelectedTitle.Render(line)
+	case isPlaying:
+		line = styles.NormalTitle.Foreground(accent).Bold(true).Render(line)
 	default:
 		line = styles.NormalTitle.Render(line)
 	}

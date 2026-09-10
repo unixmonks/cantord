@@ -110,6 +110,7 @@ type Track struct {
 	Album       string `json:"album"`
 	AlbumArtist string `json:"album_artist"`
 	AlbumID     string `json:"album_id"`
+	ArtHash     string `json:"art_hash,omitempty"`
 	TrackNo     int    `json:"track_no"`
 	DiscNo      int    `json:"disc_no"`
 	Year        int    `json:"year"`
@@ -200,6 +201,24 @@ func (c *Client) Search(query string) (SearchResult, error) {
 	var result SearchResult
 	err := c.get("/api/search?q="+url.QueryEscape(query)+"&limit=50", &result)
 	return result, err
+}
+
+// Art fetches album art bytes for a content-addressed hash (Track.ArtHash /
+// Album.ArtHash). "thumb" is plenty for a terminal-cell rendering.
+func (c *Client) Art(hash string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, c.base+"/art/"+url.PathEscape(hash)+"?size=thumb", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("connecting to %s: %w", c.base, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("art %s: status %d", hash, resp.StatusCode)
+	}
+	return io.ReadAll(resp.Body)
 }
 
 func (c *Client) Status() (Status, error) {

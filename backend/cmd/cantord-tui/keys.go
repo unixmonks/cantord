@@ -10,24 +10,25 @@ type globalKeyMap struct {
 	tab1, tab2, tab3, tab4, tab5 key.Binding
 	nextTab                      key.Binding
 	prevTab                      key.Binding
-	back                               key.Binding
-	into                               key.Binding
-	quit                               key.Binding
-	forceQuit                          key.Binding
-	selectItem                         key.Binding
-	playPause                          key.Binding
-	next                               key.Binding
-	prev                               key.Binding
-	volUp                              key.Binding
-	volDown                            key.Binding
-	mute                               key.Binding
-	shuffle                            key.Binding
-	repeat                             key.Binding
-	enqueue                            key.Binding
-	addToPlaylist                      key.Binding
-	remove                             key.Binding
-	moveDown                           key.Binding
-	moveUp                             key.Binding
+	back                         key.Binding
+	into                         key.Binding
+	quit                         key.Binding
+	forceQuit                    key.Binding
+	selectItem                   key.Binding
+	playPause                    key.Binding
+	next                         key.Binding
+	prev                         key.Binding
+	volUp                        key.Binding
+	volDown                      key.Binding
+	mute                         key.Binding
+	shuffle                      key.Binding
+	repeat                       key.Binding
+	enqueue                      key.Binding
+	addToPlaylist                key.Binding
+	remove                       key.Binding
+	moveDown                     key.Binding
+	moveUp                       key.Binding
+	toggleCover                  key.Binding
 }
 
 var keys = globalKeyMap{
@@ -61,6 +62,8 @@ var keys = globalKeyMap{
 	remove:        key.NewBinding(key.WithKeys("d"), key.WithHelp("dd", "remove")),
 	moveDown:      key.NewBinding(key.WithKeys("J"), key.WithHelp("J", "move down")),
 	moveUp:        key.NewBinding(key.WithKeys("K"), key.WithHelp("K", "move up")),
+
+	toggleCover: key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "toggle cover")),
 }
 
 // ShortHelp/FullHelp let this double as an AdditionalFullHelpKeys source on
@@ -77,6 +80,7 @@ func (k globalKeyMap) FullHelp() []key.Binding {
 		keys.into, keys.back, keys.selectItem,
 		keys.playPause, keys.next, keys.prev, keys.volUp, keys.volDown, keys.mute, keys.shuffle, keys.repeat,
 		keys.enqueue, keys.addToPlaylist, keys.remove, keys.moveDown, keys.moveUp,
+		keys.toggleCover,
 		keys.quit,
 	}
 }

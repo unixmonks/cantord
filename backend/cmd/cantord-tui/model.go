@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"image"
 	"sort"
 	"strings"
 	"time"
@@ -50,10 +51,31 @@ type Model struct {
 
 	pendingD bool
 	ddGen    int
+
+	// artCache/artFetching are keyed by art hash and shared across every
+	// Model copy bubbletea hands back and forth (maps, like slices, carry
+	// their backing storage by reference). playingIndex is a pointer for
+	// the same reason: the Queue delegate is handed it once at screen
+	// construction and needs to keep seeing updates made to it long after.
+	artCache     map[string]image.Image
+	artFetching  map[string]bool
+	playingIndex *int
+
+	// showCoverArt is the "c" toggle for the Queue screen's art pane.
+	showCoverArt bool
 }
 
 func newModel(client *Client, events chan tea.Msg) Model {
-	m := Model{client: client, events: events, connected: true}
+	playingIndex := -1
+	m := Model{
+		client:       client,
+		events:       events,
+		connected:    true,
+		artCache:     map[string]image.Image{},
+		artFetching:  map[string]bool{},
+		playingIndex: &playingIndex,
+		showCoverArt: true,
+	}
 	s, cmd := newArtistsScreen(client)
 	m.tabs[tabArtists] = []screen{s}
 	m.initCmd = tea.Batch(cmd, waitForMsg(events))
@@ -98,7 +120,31 @@ func (m *Model) resizeScreen(s *screen) {
 		return
 	}
 	w, h := m.contentSize()
+	if s.kind == screenQueue && m.showCoverArt {
+		w, _ = queueSplit(w, h)
+	}
 	s.list.SetSize(w, h)
+}
+
+// queueSplit divides the Queue screen's content area between the track list
+// and the now-playing art pane. The list always gets queueMinListWidth
+// first; only whatever's left over — up to queueArtMaxWidth — goes to art,
+// and art disappears entirely once there isn't enough room left for it to
+// read as a picture rather than a smear of blocks.
+const (
+	queueMinListWidth = 40
+	queueArtGap       = 2
+	queueArtMinWidth  = 10
+	queueArtMaxWidth  = 40
+)
+
+func queueSplit(total, height int) (listW, artW int) {
+	avail := total - queueMinListWidth - queueArtGap
+	if avail < queueArtMinWidth {
+		return total, 0
+	}
+	artW = min(avail, queueArtMaxWidth)
+	return total - artW - queueArtGap, artW
 }
 
 func (m *Model) resizeAll() {
@@ -162,7 +208,7 @@ func (m *Model) switchTab(i int) tea.Cmd {
 	case tabGenres:
 		s, cmd = newGenresScreen(m.client)
 	case tabQueue:
-		s, cmd = newQueueScreen(m.client)
+		s, cmd = newQueueScreen(m.client, m.playingIndex)
 	case tabPlaylists:
 		s, cmd = newPlaylistsScreen(m.client)
 	}
@@ -375,7 +421,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case queueLoadedMsg:
 		if s := m.findScreen(msg.screenID); s != nil {
-			s.playingIndex = msg.playingIndex
 			cmd := setItems(&s.list, msg.items)
 			if msg.err != nil {
 				return m, s.list.NewStatusMessage(errorStyle.Render(msg.err.Error()))
@@ -405,6 +450,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pendingD = false
 		}
 		return m, nil
+
+	case artLoadedMsg:
+		delete(m.artFetching, msg.hash)
+		if msg.err == nil && msg.img != nil {
+			m.artCache[msg.hash] = msg.img
+		}
+		return m, nil
 	}
 
 	// Anything else (spinner ticks, textinput blink, filter-match results,
@@ -430,6 +482,7 @@ func (m *Model) handleSSE(ev sseEvent) tea.Cmd {
 			m.status = st
 		}
 		m.connected = true
+		return m.ensureArtLoaded()
 	case "queue_changed":
 		var tracks []Track
 		if json.Unmarshal([]byte(ev.data), &tracks) == nil {
@@ -443,6 +496,26 @@ func (m *Model) handleSSE(ev sseEvent) tea.Cmd {
 		}
 	}
 	return nil
+}
+
+// ensureArtLoaded keeps playingIndex in sync with the current status and,
+// if the now-playing track's art isn't cached (or already in flight),
+// kicks off a fetch for it.
+func (m *Model) ensureArtLoaded() tea.Cmd {
+	*m.playingIndex = -1
+	if m.status.State == "stopped" || m.status.Track == nil {
+		return nil
+	}
+	if m.status.QueueIndex >= 0 {
+		*m.playingIndex = m.status.QueueIndex
+	}
+
+	hash := m.status.Track.ArtHash
+	if hash == "" || m.artCache[hash] != nil || m.artFetching[hash] {
+		return nil
+	}
+	m.artFetching[hash] = true
+	return loadArt(m.client, hash)
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -541,6 +614,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.moveCurrent(1)
 	case key.Matches(msg, keys.moveUp):
 		return m, m.moveCurrent(-1)
+
+	case key.Matches(msg, keys.toggleCover):
+		m.showCoverArt = !m.showCoverArt
+		m.resizeScreen(m.queueScreen())
+		return m, nil
 	}
 
 	if cur != nil {
@@ -576,8 +654,29 @@ func (m Model) View() string {
 	} else {
 		s := cur[len(cur)-1]
 		body = s.list.View()
+		if s.kind == screenQueue && m.showCoverArt {
+			_, h := m.contentSize()
+			if _, artW := queueSplit(m.width, h); artW > 0 {
+				gap := lipgloss.NewStyle().Width(queueArtGap).Height(h).Render("")
+				body = lipgloss.JoinHorizontal(lipgloss.Top, body, gap, m.renderQueueArt(artW, h))
+			}
+		}
 	}
 
 	footer := renderFooter(m.status, m.width, m.connected)
 	return tabBar + "\n" + body + "\n" + footer
+}
+
+// renderQueueArt renders the now-playing track's cover art (if it's been
+// fetched) centered inside a w x h box; it returns a blank box of that size
+// otherwise, so the layout doesn't jump around while art is loading or
+// nothing is playing.
+func (m Model) renderQueueArt(w, h int) string {
+	var content string
+	if m.status.Track != nil && m.status.State != "stopped" {
+		if img := m.artCache[m.status.Track.ArtHash]; img != nil {
+			content = renderArt(img, w, h)
+		}
+	}
+	return lipgloss.Place(w, h, lipgloss.Center, lipgloss.Center, content)
 }

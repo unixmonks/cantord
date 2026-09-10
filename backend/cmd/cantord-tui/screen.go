@@ -36,9 +36,6 @@ type screen struct {
 	// screenAlbums pagination (the only list that isn't fetched in full).
 	nextCursor  string
 	loadingMore bool
-
-	// screenQueue: index of the currently-playing entry, for highlighting.
-	playingIndex int
 }
 
 var nextScreenID int
@@ -206,8 +203,8 @@ func newGenreTracksScreen(c *Client, genre string) (screen, tea.Cmd) {
 	}
 }
 
-func newQueueScreen(c *Client) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenQueue, title: "Queue", list: newListWithDelegate("Queue", queueDelegate{})}
+func newQueueScreen(c *Client, playingIndex *int) (screen, tea.Cmd) {
+	s := screen{id: newScreenID(), kind: screenQueue, title: "Queue", list: newListWithDelegate("Queue", queueDelegate{playingIndex: playingIndex})}
 	return s, loadQueue(c, s.id)
 }
 
@@ -247,4 +244,3 @@ func newPlaylistTracksScreen(c *Client, name string) (screen, tea.Cmd) {
 		return itemsLoadedMsg{screenID: id, items: items, err: err}
 	}
 }
-

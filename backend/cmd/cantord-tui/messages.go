@@ -18,10 +18,9 @@ type albumsPageLoadedMsg struct {
 }
 
 type queueLoadedMsg struct {
-	screenID     int
-	items        []item
-	playingIndex int
-	err          error
+	screenID int
+	items    []item
+	err      error
 }
 
 // playerStatusMsg is emitted on every "status" SSE tick (about once a
