@@ -275,21 +275,38 @@ func (m *Model) drillInto() tea.Cmd {
 	return nil
 }
 
-// playCurrent plays the selected track. Enter is reserved for this alone —
-// navigating into a folder-like item is drillInto's job ("l").
+// playCurrent plays the selected item. Enter is reserved for this alone —
+// navigating into a folder-like item is drillInto's job ("l"). On an album
+// it replaces the queue with the whole album; on a track outside the Queue
+// screen it replaces the queue with that track plus everything listed
+// below it. Within the Queue screen itself, a track just jumps playback to
+// that position rather than rebuilding the queue from its own tail.
 func (m *Model) playCurrent() tea.Cmd {
 	cur := m.currentScreen()
 	if cur == nil {
 		return nil
 	}
 	it, ok := cur.list.SelectedItem().(item)
-	if !ok || it.kind != itemTrack {
+	if !ok {
 		return nil
 	}
-	if cur.kind == screenQueue {
-		return cmdPlayQueueIndex(m.client, cur.list.Index())
+	switch it.kind {
+	case itemAlbum:
+		return cmdPlayAlbum(m.client, it.id, it.title)
+	case itemTrack:
+		if cur.kind == screenQueue {
+			return cmdPlayQueueIndex(m.client, cur.list.Index())
+		}
+		items := cur.list.Items()
+		ids := make([]string, 0, len(items)-cur.list.Index())
+		for _, li := range items[cur.list.Index():] {
+			if ti, ok := li.(item); ok && ti.kind == itemTrack {
+				ids = append(ids, ti.id)
+			}
+		}
+		return cmdPlayTracksFrom(m.client, ids, it.title)
 	}
-	return cmdPlayNow(m.client, it.id)
+	return nil
 }
 
 func (m *Model) enqueueCurrent() tea.Cmd {

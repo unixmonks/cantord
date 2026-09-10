@@ -97,6 +97,52 @@ func cmdPlayNow(c *Client, id string) tea.Cmd {
 	}
 }
 
+// clearAndQueue replaces the whole queue with ids, in order, and starts
+// playback at the first one.
+func clearAndQueue(c *Client, ids []string) (int, error) {
+	if err := c.ClearQueue(); err != nil {
+		return 0, err
+	}
+	for _, id := range ids {
+		if _, err := c.Enqueue(id); err != nil {
+			return 0, err
+		}
+	}
+	if len(ids) > 0 {
+		if err := c.PlayIndex(0); err != nil {
+			return len(ids), err
+		}
+	}
+	return len(ids), nil
+}
+
+// cmdPlayAlbum is Enter on an album item: replace the queue with the whole
+// album, in track order, and start playing it from the top.
+func cmdPlayAlbum(c *Client, albumID, label string) tea.Cmd {
+	return func() tea.Msg {
+		tracks, err := c.AlbumTracks(albumID)
+		if err != nil {
+			return action("", err, false)
+		}
+		ids := make([]string, len(tracks))
+		for i, t := range tracks {
+			ids[i] = t.ID
+		}
+		n, err := clearAndQueue(c, ids)
+		return action(fmt.Sprintf("playing %s (%d tracks)", label, n), err, true)
+	}
+}
+
+// cmdPlayTracksFrom is Enter on a track within a browsing screen (album
+// tracks, genre tracks, playlist tracks): replace the queue with that track
+// and everything listed under it, and start playing from it.
+func cmdPlayTracksFrom(c *Client, ids []string, label string) tea.Cmd {
+	return func() tea.Msg {
+		n, err := clearAndQueue(c, ids)
+		return action(fmt.Sprintf("playing %s (%d tracks)", label, n), err, true)
+	}
+}
+
 func cmdEnqueueAlbum(c *Client, albumID, label string) tea.Cmd {
 	return func() tea.Msg {
 		tracks, err := c.AlbumTracks(albumID)

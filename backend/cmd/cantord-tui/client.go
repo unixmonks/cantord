@@ -261,6 +261,10 @@ func (c *Client) PlayIndex(i int) error {
 	return c.post(fmt.Sprintf("/api/queue/%d/play", i), nil, nil)
 }
 
+func (c *Client) ClearQueue() error {
+	return c.post("/api/queue/clear", nil, nil)
+}
+
 func (c *Client) RemoveQueueIndex(i int) error {
 	return c.delete(fmt.Sprintf("/api/queue/%d", i), nil)
 }
