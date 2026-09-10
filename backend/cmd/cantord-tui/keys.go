@@ -3,9 +3,7 @@ package main
 import "github.com/charmbracelet/bubbles/key"
 
 // globalKeys are the app-wide vim-style bindings handled by the root model
-// before (or instead of) forwarding a key to the active screen's list. They
-// double as the source for the "?" full-help view via list.Model's
-// AdditionalFullHelpKeys hook.
+// before (or instead of) forwarding a key to the active screen's list.
 type globalKeyMap struct {
 	tab1, tab2, tab3, tab4, tab5 key.Binding
 	nextTab                      key.Binding
@@ -64,23 +62,4 @@ var keys = globalKeyMap{
 	moveUp:        key.NewBinding(key.WithKeys("K"), key.WithHelp("K", "move up")),
 
 	toggleCover: key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "toggle cover")),
-}
-
-// ShortHelp/FullHelp let this double as an AdditionalFullHelpKeys source on
-// every list, so "?" shows navigation, transport, and per-screen actions
-// together in one place.
-func (k globalKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{keys.into, keys.back, keys.selectItem, keys.playPause, keys.quit}
-}
-
-func (k globalKeyMap) FullHelp() []key.Binding {
-	return []key.Binding{
-		keys.tab1, keys.tab2, keys.tab3, keys.tab4, keys.tab5,
-		keys.nextTab, keys.prevTab,
-		keys.into, keys.back, keys.selectItem,
-		keys.playPause, keys.next, keys.prev, keys.volUp, keys.volDown, keys.mute, keys.shuffle, keys.repeat,
-		keys.enqueue, keys.addToPlaylist, keys.remove, keys.moveDown, keys.moveUp,
-		keys.toggleCover,
-		keys.quit,
-	}
 }

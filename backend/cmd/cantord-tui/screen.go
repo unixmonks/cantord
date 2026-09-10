@@ -59,15 +59,16 @@ func newCompactList(title string) list.Model {
 func newListWithDelegate(title string, delegate list.ItemDelegate) list.Model {
 	l := list.New(nil, delegate, 0, 0)
 	l.Title = title
-	l.SetShowHelp(true)
-	l.AdditionalShortHelpKeys = keys.ShortHelp
-	l.AdditionalFullHelpKeys = keys.FullHelp
 	l.Styles.Title = listTitleStyle
 	// The default TitleBar style pads a blank line below the title, and the
 	// status bar (the "N items" line) adds another — both just push the
 	// actual rows down for no benefit here.
 	l.Styles.TitleBar = l.Styles.TitleBar.Padding(0, 0, 0, 2)
 	l.SetShowStatusBar(false)
+	// No pagination dots or help line either — every row they'd otherwise
+	// take goes to the item list instead.
+	l.SetShowPagination(false)
+	l.SetShowHelp(false)
 
 	// Free "d"/"u"/"f"/"b" from the built-in pager so they're available for
 	// our own bindings (dd to remove). Lowercase h/l are reserved globally
@@ -79,6 +80,10 @@ func newListWithDelegate(title string, delegate list.ItemDelegate) list.Model {
 	// list's own (would-be) tea.Quit.
 	l.KeyMap.Quit = key.Binding{}
 	l.KeyMap.ForceQuit = key.Binding{}
+	// The help view is off, so its toggle keys would otherwise be dead
+	// bindings that still eat a keypress for nothing.
+	l.KeyMap.ShowFullHelp = key.Binding{}
+	l.KeyMap.CloseFullHelp = key.Binding{}
 	return l
 }
 
