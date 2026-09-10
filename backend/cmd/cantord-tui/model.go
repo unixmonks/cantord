@@ -15,14 +15,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var tabTitles = []string{"1 Artists", "2 Albums", "3 Genres", "4 Queue", "5 Playlists"}
-
 const (
 	tabArtists = iota
 	tabAlbums
 	tabGenres
 	tabQueue
 	tabPlaylists
+	numTabs
 )
 
 // addPrompt is the small modal shown for "A" (add to playlist): it replaces
@@ -41,7 +40,7 @@ type Model struct {
 
 	width, height int
 
-	tabs      [5][]screen
+	tabs      [numTabs][]screen
 	activeTab int
 
 	status    Status
@@ -108,7 +107,7 @@ func (m *Model) currentScreen() *screen {
 func (m *Model) footerHeight() int { return 3 } // border-top + 2 content lines
 
 func (m *Model) contentSize() (int, int) {
-	h := m.height - m.footerHeight() - 1 // -1 for the tab bar
+	h := m.height - m.footerHeight()
 	if h < 3 {
 		h = 3
 	}
@@ -587,9 +586,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.switchTab(tabPlaylists)
 
 	case key.Matches(msg, keys.nextTab):
-		return m, m.switchTab((m.activeTab + 1) % len(tabTitles))
+		return m, m.switchTab((m.activeTab + 1) % numTabs)
 	case key.Matches(msg, keys.prevTab):
-		return m, m.switchTab((m.activeTab - 1 + len(tabTitles)) % len(tabTitles))
+		return m, m.switchTab((m.activeTab - 1 + numTabs) % numTabs)
 
 	case key.Matches(msg, keys.back):
 		return m, m.goBack()
@@ -662,8 +661,6 @@ func (m Model) View() string {
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
 	}
 
-	tabBar := renderTabBar(tabTitles, m.activeTab)
-
 	cur := m.tabs[m.activeTab]
 	var body string
 	if len(cur) == 0 {
@@ -681,7 +678,7 @@ func (m Model) View() string {
 	}
 
 	footer := renderFooter(m.status, m.width, m.connected)
-	return tabBar + "\n" + body + "\n" + footer
+	return body + "\n" + footer
 }
 
 // renderQueueArt renders the now-playing track's cover art (if it's been

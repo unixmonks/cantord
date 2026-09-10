@@ -63,6 +63,11 @@ func newListWithDelegate(title string, delegate list.ItemDelegate) list.Model {
 	l.AdditionalShortHelpKeys = keys.ShortHelp
 	l.AdditionalFullHelpKeys = keys.FullHelp
 	l.Styles.Title = listTitleStyle
+	// The default TitleBar style pads a blank line below the title, and the
+	// status bar (the "N items" line) adds another — both just push the
+	// actual rows down for no benefit here.
+	l.Styles.TitleBar = l.Styles.TitleBar.Padding(0, 0, 0, 2)
+	l.SetShowStatusBar(false)
 
 	// Free "d"/"u"/"f"/"b" from the built-in pager so they're available for
 	// our own bindings (dd to remove). Lowercase h/l are reserved globally
