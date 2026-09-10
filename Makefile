@@ -2,7 +2,7 @@ BACKEND_DIR  := backend
 FRONTEND_DIR := frontend
 
 .DEFAULT_GOAL := help
-.PHONY: help install build build-backend build-frontend ctl freebsd \
+.PHONY: help install build build-backend build-frontend ctl tui freebsd \
         run dev test vet fmt lint clean
 
 help: ## Show this help
@@ -12,13 +12,16 @@ help: ## Show this help
 install: ## Install frontend deps (backend deps resolve via go.mod on build)
 	cd $(FRONTEND_DIR) && npm install
 
-build: build-backend ctl build-frontend ## Build backend binary + cantordctl + frontend production bundle
+build: build-backend ctl tui build-frontend ## Build backend binary + cantordctl + cantord-tui + frontend production bundle
 
 build-backend: ## Build the cantord daemon binary (backend/cantord)
 	cd $(BACKEND_DIR) && go build -o cantord ./cmd/cantord
 
 ctl: ## Build the cantordctl CLI client (backend/cantordctl)
 	cd $(BACKEND_DIR) && go build -o cantordctl ./cmd/cantordctl
+
+tui: ## Build the cantord-tui terminal client (backend/cantord-tui)
+	cd $(BACKEND_DIR) && go build -o cantord-tui ./cmd/cantord-tui
 
 build-frontend: ## Build the frontend production bundle (frontend/dist)
 	cd $(FRONTEND_DIR) && npm run build
@@ -45,5 +48,5 @@ lint: vet ## Lint backend (go vet) and frontend (oxlint)
 	cd $(FRONTEND_DIR) && npm run lint
 
 clean: ## Remove build artifacts
-	rm -f $(BACKEND_DIR)/cantord $(BACKEND_DIR)/cantordctl $(BACKEND_DIR)/cantord-freebsd
+	rm -f $(BACKEND_DIR)/cantord $(BACKEND_DIR)/cantordctl $(BACKEND_DIR)/cantord-tui $(BACKEND_DIR)/cantord-freebsd
 	rm -rf $(FRONTEND_DIR)/dist

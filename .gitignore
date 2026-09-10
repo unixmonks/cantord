@@ -1,6 +1,7 @@
 # backend (Go)
 /backend/cantord
 /backend/cantordctl
+/backend/cantord-tui
 /backend/bin/
 *.db
 *.sock
