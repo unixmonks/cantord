@@ -97,9 +97,11 @@ func cmdPlayNow(c *Client, id string) tea.Cmd {
 	}
 }
 
-// clearAndQueue replaces the whole queue with ids, in order, and starts
-// playback at the first one.
-func clearAndQueue(c *Client, ids []string) (int, error) {
+// clearAndEnqueue replaces the whole queue with ids, in order, without
+// starting playback — the search overlay's "queue my selections" commit
+// uses this directly; clearAndQueue below layers autoplay on top for the
+// browsing screens' "play this now" actions.
+func clearAndEnqueue(c *Client, ids []string) (int, error) {
 	if err := c.ClearQueue(); err != nil {
 		return 0, err
 	}
@@ -108,12 +110,17 @@ func clearAndQueue(c *Client, ids []string) (int, error) {
 			return 0, err
 		}
 	}
-	if len(ids) > 0 {
-		if err := c.PlayIndex(0); err != nil {
-			return len(ids), err
-		}
-	}
 	return len(ids), nil
+}
+
+// clearAndQueue replaces the whole queue with ids, in order, and starts
+// playback at the first one.
+func clearAndQueue(c *Client, ids []string) (int, error) {
+	n, err := clearAndEnqueue(c, ids)
+	if err != nil || n == 0 {
+		return n, err
+	}
+	return n, c.PlayIndex(0)
 }
 
 // cmdPlayAlbum is Enter on an album item: replace the queue with the whole

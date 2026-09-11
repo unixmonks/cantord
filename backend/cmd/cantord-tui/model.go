@@ -48,6 +48,9 @@ type Model struct {
 
 	prompt *addPrompt
 
+	// searchOverlay is the "ctrl+k" global search popup — see search.go.
+	searchOverlay *searchOverlay
+
 	pendingD bool
 	ddGen    int
 
@@ -194,26 +197,43 @@ func (m *Model) goBack() tea.Cmd {
 	return nil
 }
 
+// newRootScreen builds tab i's top-of-stack screen from scratch (the one
+// every tab starts on before any drilling in).
+func newRootScreen(client *Client, playingIndex *int, i int) (screen, tea.Cmd) {
+	switch i {
+	case tabArtists:
+		return newArtistsScreen(client)
+	case tabAlbums:
+		return newAlbumsScreen(client)
+	case tabGenres:
+		return newGenresScreen(client)
+	case tabQueue:
+		return newQueueScreen(client, playingIndex)
+	case tabPlaylists:
+		return newPlaylistsScreen(client)
+	}
+	return screen{}, nil
+}
+
 func (m *Model) switchTab(i int) tea.Cmd {
 	m.activeTab = i
 	if len(m.tabs[i]) > 0 {
 		m.resizeScreen(m.currentScreen())
 		return nil
 	}
-	var s screen
-	var cmd tea.Cmd
-	switch i {
-	case tabArtists:
-		s, cmd = newArtistsScreen(m.client)
-	case tabAlbums:
-		s, cmd = newAlbumsScreen(m.client)
-	case tabGenres:
-		s, cmd = newGenresScreen(m.client)
-	case tabQueue:
-		s, cmd = newQueueScreen(m.client, m.playingIndex)
-	case tabPlaylists:
-		s, cmd = newPlaylistsScreen(m.client)
-	}
+	s, cmd := newRootScreen(m.client, m.playingIndex, i)
+	m.resizeScreen(&s)
+	m.tabs[i] = []screen{s}
+	return cmd
+}
+
+// jumpToTab switches to tab i and resets it to a fresh root screen, even if
+// it already had a navigation stack — used when a search-overlay result
+// jumps into a tab, so the resulting breadcrumb reads "Artists › X" instead
+// of stacking onto wherever that tab was last left.
+func (m *Model) jumpToTab(i int) tea.Cmd {
+	m.activeTab = i
+	s, cmd := newRootScreen(m.client, m.playingIndex, i)
 	m.resizeScreen(&s)
 	m.tabs[i] = []screen{s}
 	return cmd
@@ -404,6 +424,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case itemsLoadedMsg:
 		if s := m.findScreen(msg.screenID); s != nil {
 			cmd := setItems(&s.list, msg.items)
+			if s.selectID != "" {
+				for i, it := range msg.items {
+					if it.id == s.selectID {
+						s.list.Select(i)
+						break
+					}
+				}
+				s.selectID = ""
+			}
 			if msg.err != nil {
 				return m, s.list.NewStatusMessage(errorStyle.Render(msg.err.Error()))
 			}
@@ -476,10 +505,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.artCache[msg.hash] = msg.img
 		}
 		return m, nil
+
+	case searchDebounceMsg:
+		if m.searchOverlay != nil && msg.gen == m.searchOverlay.gen {
+			query := strings.TrimSpace(m.searchOverlay.input.Value())
+			if query == "" {
+				m.searchOverlay.clearResults()
+				return m, nil
+			}
+			return m, cmdSearch(m.client, msg.gen, query)
+		}
+		return m, nil
+
+	case searchResultsMsg:
+		if m.searchOverlay != nil && msg.gen == m.searchOverlay.gen {
+			m.searchOverlay.applyResults(msg.result)
+		}
+		return m, nil
 	}
 
 	// Anything else (spinner ticks, textinput blink, filter-match results,
 	// etc.) belongs to whichever sub-component is currently live.
+	if m.searchOverlay != nil {
+		var cmd tea.Cmd
+		m.searchOverlay.input, cmd = m.searchOverlay.input.Update(msg)
+		return m, cmd
+	}
 	if m.prompt != nil {
 		var cmd tea.Cmd
 		m.prompt.input, cmd = m.prompt.input.Update(msg)
@@ -540,6 +591,10 @@ func (m *Model) ensureArtLoaded() tea.Cmd {
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if key.Matches(msg, keys.forceQuit) {
 		return m, tea.Quit
+	}
+
+	if m.searchOverlay != nil {
+		return m.handleSearchKey(msg)
 	}
 
 	if m.prompt != nil {
@@ -649,6 +704,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.help):
 		m.showHelp = true
 		return m, nil
+
+	case key.Matches(msg, keys.search):
+		return m, m.startSearch()
 	}
 
 	if cur != nil {
@@ -668,6 +726,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	if m.width == 0 {
 		return "starting cantord-tui…"
+	}
+
+	if m.searchOverlay != nil {
+		return renderSearchOverlay(m.width, m.height, m.searchOverlay)
 	}
 
 	if m.prompt != nil {

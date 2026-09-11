@@ -31,6 +31,7 @@ type globalKeyMap struct {
 	moveUp                       key.Binding
 	toggleCover                  key.Binding
 	help                         key.Binding
+	search                       key.Binding
 }
 
 // keys and listKeys are populated at startup by applyKeyConfig, from
@@ -78,7 +79,8 @@ func applyKeyConfig(cfg KeyConfig) {
 
 		toggleCover: bindKeys(cfg.ToggleCover, "", "toggle cover"),
 
-		help: bindKeys(cfg.Help, "", "help"),
+		help:   bindKeys(cfg.Help, "", "help"),
+		search: bindKeys(cfg.Search, "", "search"),
 	}
 
 	lm := list.DefaultKeyMap()

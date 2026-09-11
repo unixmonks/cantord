@@ -40,6 +40,7 @@ type KeyConfig struct {
 	MoveUp        []string `toml:"move_up"`
 	ToggleCover   []string `toml:"toggle_cover"`
 	Help          []string `toml:"help"`
+	Search        []string `toml:"search"`
 
 	// List-navigation shortcuts, wired into every screen's list.Model.
 	CursorUp    []string `toml:"cursor_up"`
@@ -87,7 +88,8 @@ func DefaultKeyConfig() KeyConfig {
 
 		ToggleCover: []string{"c"},
 
-		Help: []string{"?"},
+		Help:   []string{"?"},
+		Search: []string{"ctrl+k"},
 
 		// Lowercase h/l are reserved above for tree navigation (back/into),
 		// so paging uses uppercase H/L plus the arrow/page/ctrl keys.

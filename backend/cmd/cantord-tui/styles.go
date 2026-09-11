@@ -25,6 +25,8 @@ var (
 
 	errorStyle = lipgloss.NewStyle().Foreground(bad)
 
+	searchSelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(accent)
+
 	promptBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(accent).

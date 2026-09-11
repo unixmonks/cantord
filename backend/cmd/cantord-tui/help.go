@@ -35,6 +35,7 @@ func buildHelpSections() {
 		entries []helpEntry
 	}{
 		{"Navigate", []helpEntry{
+			fromBinding(keys.search),
 			fromBinding(keys.into),
 			fromBinding(keys.back),
 			fromBinding(keys.selectItem),

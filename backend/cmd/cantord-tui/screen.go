@@ -35,6 +35,11 @@ type screen struct {
 	// screenAlbums pagination (the only list that isn't fetched in full).
 	nextCursor  string
 	loadingMore bool
+
+	// selectID, if set, is the id of the item to highlight once this
+	// screen's items finish loading (set by a search-overlay jump landing
+	// on a specific track within its album); cleared after use.
+	selectID string
 }
 
 var nextScreenID int
