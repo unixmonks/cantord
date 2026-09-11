@@ -20,6 +20,15 @@ var (
 
 	footerLabelStyle = lipgloss.NewStyle().Foreground(subtle)
 
+	tabBarStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderBottom(true).
+			BorderForeground(subtle).
+			Padding(0, 1)
+
+	tabActiveStyle   = lipgloss.NewStyle().Bold(true).Foreground(accent)
+	tabInactiveStyle = lipgloss.NewStyle().Foreground(subtle)
+
 	connectedStyle    = lipgloss.NewStyle().Foreground(good)
 	disconnectedStyle = lipgloss.NewStyle().Foreground(bad).Bold(true)
 

@@ -68,6 +68,17 @@ type Model struct {
 
 	// showHelp is the "?" full-screen shortcut reference.
 	showHelp bool
+
+	// showTabBar is the "ctrl+b" toggle for the top-of-screen section bar.
+	showTabBar bool
+
+	// preview is the Miller-column "one level ahead" pane for whatever's
+	// selected in the active tab's current screen — see refreshPreview.
+	// It's not part of any tab's navigation stack; "into" promotes it into
+	// the stack instead of re-fetching. previewKey identifies which item
+	// it's a preview of, so it isn't refetched on every render.
+	preview    *screen
+	previewKey string
 }
 
 func newModel(client *Client, events chan tea.Msg) Model {
@@ -80,6 +91,7 @@ func newModel(client *Client, events chan tea.Msg) Model {
 		artFetching:  map[string]bool{},
 		playingIndex: &playingIndex,
 		showCoverArt: true,
+		showTabBar:   true,
 	}
 	s, cmd := newArtistsScreen(client)
 	m.tabs[tabArtists] = []screen{s}
@@ -112,8 +124,17 @@ func (m *Model) currentScreen() *screen {
 
 func (m *Model) footerHeight() int { return 3 } // border-top + 2 content lines
 
+// headerHeight is the tab bar's height when it's showing: a label row plus
+// its bottom border.
+func (m *Model) headerHeight() int {
+	if !m.showTabBar {
+		return 0
+	}
+	return 2
+}
+
 func (m *Model) contentSize() (int, int) {
-	h := m.height - m.footerHeight()
+	h := m.height - m.footerHeight() - m.headerHeight()
 	if h < 3 {
 		h = 3
 	}
@@ -160,23 +181,10 @@ func (m *Model) resizeAll() {
 	}
 }
 
-// breadcrumbTitle joins the leaf titles of the current stack with the new
-// screen's own title, so the list's title bar always shows the full path
-// (e.g. "Artists › Pendulum › Immersion") instead of just the leaf name —
-// the only way to tell where you are once you've drilled in more than one
-// level.
-func (m *Model) breadcrumbTitle(leaf string) string {
-	stack := m.tabs[m.activeTab]
-	crumbs := make([]string, 0, len(stack)+1)
-	for _, s := range stack {
-		crumbs = append(crumbs, s.title)
-	}
-	crumbs = append(crumbs, leaf)
-	return strings.Join(crumbs, " › ")
-}
-
+// push adds s on top of the active tab's navigation stack. There's no
+// breadcrumb text to maintain: with Miller columns, the parent and preview
+// panes either side of it show that context spatially instead.
 func (m *Model) push(s screen) {
-	s.list.Title = m.breadcrumbTitle(s.title)
 	m.resizeScreen(&s)
 	m.tabs[m.activeTab] = append(m.tabs[m.activeTab], s)
 }
@@ -194,7 +202,7 @@ func (m *Model) goBack() tea.Cmd {
 	if len(m.tabs[m.activeTab]) > 1 {
 		m.tabs[m.activeTab] = m.tabs[m.activeTab][:len(m.tabs[m.activeTab])-1]
 	}
-	return nil
+	return m.refreshPreview()
 }
 
 // newRootScreen builds tab i's top-of-stack screen from scratch (the one
@@ -219,24 +227,24 @@ func (m *Model) switchTab(i int) tea.Cmd {
 	m.activeTab = i
 	if len(m.tabs[i]) > 0 {
 		m.resizeScreen(m.currentScreen())
-		return nil
+		return m.refreshPreview()
 	}
 	s, cmd := newRootScreen(m.client, m.playingIndex, i)
 	m.resizeScreen(&s)
 	m.tabs[i] = []screen{s}
-	return cmd
+	return tea.Batch(cmd, m.refreshPreview())
 }
 
 // jumpToTab switches to tab i and resets it to a fresh root screen, even if
 // it already had a navigation stack — used when a search-overlay result
-// jumps into a tab, so the resulting breadcrumb reads "Artists › X" instead
-// of stacking onto wherever that tab was last left.
+// jumps into a tab, so it lands cleanly instead of stacking onto wherever
+// that tab was last left.
 func (m *Model) jumpToTab(i int) tea.Cmd {
 	m.activeTab = i
 	s, cmd := newRootScreen(m.client, m.playingIndex, i)
 	m.resizeScreen(&s)
 	m.tabs[i] = []screen{s}
-	return cmd
+	return tea.Batch(cmd, m.refreshPreview())
 }
 
 // findScreen locates a screen by id anywhere across every tab's stack, so a
@@ -250,7 +258,19 @@ func (m *Model) findScreen(id int) *screen {
 			}
 		}
 	}
+	if m.preview != nil && m.preview.id == id {
+		return m.preview
+	}
 	return nil
+}
+
+// isCurrentScreen reports whether id is the active tab's top-of-stack
+// screen — used to decide whether a just-finished load should also
+// refresh the Miller-column preview (only the screen actually on screen
+// drives it).
+func (m *Model) isCurrentScreen(id int) bool {
+	cur := m.currentScreen()
+	return cur != nil && cur.id == id
 }
 
 func (m *Model) queueScreen() *screen {
@@ -264,9 +284,35 @@ func (m *Model) queueScreen() *screen {
 // contain that kind of item (search results, album tracks, genre tracks,
 // and playlist tracks are all just lists of track items, for instance). ---
 
+// screenForItem builds the screen that it's children live on — what "into"
+// pushes, and what a Miller-column preview shows ahead of time. ok is false
+// for items with no children (a track).
+func screenForItem(client *Client, it item) (s screen, cmd tea.Cmd, ok bool) {
+	switch it.kind {
+	case itemArtist:
+		s, cmd = newAlbumsByArtistScreen(client, it.id)
+	case itemGenre:
+		s, cmd = newGenreTracksScreen(client, it.id)
+	case itemPlaylist:
+		s, cmd = newPlaylistTracksScreen(client, it.id)
+	case itemAlbum:
+		s, cmd = newAlbumTracksScreen(client, *it.album)
+	default:
+		return screen{}, nil, false
+	}
+	return s, cmd, true
+}
+
+// previewKeyFor identifies an item for previewKey's dedupe check.
+func previewKeyFor(it item) string {
+	return fmt.Sprintf("%d:%s", it.kind, it.id)
+}
+
 // drillInto pushes a new screen for the selected item's children ("l" — the
 // tree-navigation counterpart to goBack's "h"). Tracks have no children, so
-// it's a no-op on a track; playing one is enter's job (playCurrent).
+// it's a no-op on a track; playing one is enter's job (playCurrent). If the
+// Miller-column preview pane already has this exact item loaded, it's
+// promoted straight into the stack instead of being fetched again.
 func (m *Model) drillInto() tea.Cmd {
 	cur := m.currentScreen()
 	if cur == nil {
@@ -276,25 +322,52 @@ func (m *Model) drillInto() tea.Cmd {
 	if !ok {
 		return nil
 	}
-	switch it.kind {
-	case itemArtist:
-		s, cmd := newAlbumsByArtistScreen(m.client, it.id)
+
+	if m.preview != nil && m.previewKey == previewKeyFor(it) {
+		s := *m.preview
+		m.preview, m.previewKey = nil, ""
 		m.push(s)
-		return cmd
-	case itemGenre:
-		s, cmd := newGenreTracksScreen(m.client, it.id)
-		m.push(s)
-		return cmd
-	case itemPlaylist:
-		s, cmd := newPlaylistTracksScreen(m.client, it.id)
-		m.push(s)
-		return cmd
-	case itemAlbum:
-		s, cmd := newAlbumTracksScreen(m.client, *it.album)
-		m.push(s)
-		return cmd
+		return m.refreshPreview()
 	}
-	return nil
+
+	s, cmd, hasChildren := screenForItem(m.client, it)
+	if !hasChildren {
+		return nil
+	}
+	m.push(s)
+	return tea.Batch(cmd, m.refreshPreview())
+}
+
+// refreshPreview recomputes the Miller-column preview pane for whatever's
+// now selected in the active tab's current screen. It's a no-op for tabs
+// that aren't a browsing hierarchy (just the Queue) and clears the preview
+// when there's nothing selected or the selection has no children.
+func (m *Model) refreshPreview() tea.Cmd {
+	if m.activeTab == tabQueue {
+		m.preview, m.previewKey = nil, ""
+		return nil
+	}
+	cur := m.currentScreen()
+	if cur == nil {
+		m.preview, m.previewKey = nil, ""
+		return nil
+	}
+	it, ok := cur.list.SelectedItem().(item)
+	if !ok {
+		m.preview, m.previewKey = nil, ""
+		return nil
+	}
+	key := previewKeyFor(it)
+	if key == m.previewKey {
+		return nil // already previewing this exact item
+	}
+	s, cmd, hasChildren := screenForItem(m.client, it)
+	if !hasChildren {
+		m.preview, m.previewKey = nil, ""
+		return nil
+	}
+	m.preview, m.previewKey = &s, key
+	return cmd
 }
 
 // playCurrent plays the selected item. Enter is reserved for this alone —
@@ -433,10 +506,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				s.selectID = ""
 			}
-			if msg.err != nil {
-				return m, s.list.NewStatusMessage(errorStyle.Render(msg.err.Error()))
+			cmds := []tea.Cmd{cmd}
+			if m.isCurrentScreen(msg.screenID) {
+				cmds = append(cmds, m.refreshPreview())
 			}
-			return m, cmd
+			if msg.err != nil {
+				cmds = append(cmds, s.list.NewStatusMessage(errorStyle.Render(msg.err.Error())))
+			}
+			return m, tea.Batch(cmds...)
 		}
 		return m, nil
 
@@ -460,10 +537,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 			s.nextCursor = msg.nextCursor
 			cmd := setItems(&s.list, items)
-			if msg.err != nil {
-				return m, s.list.NewStatusMessage(errorStyle.Render(msg.err.Error()))
+			cmds := []tea.Cmd{cmd}
+			if m.isCurrentScreen(msg.screenID) {
+				cmds = append(cmds, m.refreshPreview())
 			}
-			return m, cmd
+			if msg.err != nil {
+				cmds = append(cmds, s.list.NewStatusMessage(errorStyle.Render(msg.err.Error())))
+			}
+			return m, tea.Batch(cmds...)
 		}
 		return m, nil
 
@@ -707,18 +788,28 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.search):
 		return m, m.startSearch()
+
+	case key.Matches(msg, keys.toggleTabBar):
+		m.showTabBar = !m.showTabBar
+		m.resizeAll()
+		return m, nil
 	}
 
 	if cur != nil {
+		prevSel, _ := cur.list.SelectedItem().(item)
 		var cmd tea.Cmd
 		cur.list, cmd = cur.list.Update(msg)
+		cmds := []tea.Cmd{cmd}
 		if cur.kind == screenAlbums && cur.nextCursor != "" {
 			if idx := cur.list.Index(); idx >= len(cur.list.Items())-5 && !cur.loadingMore {
 				cur.loadingMore = true
-				return m, tea.Batch(cmd, loadAlbumsPage(m.client, cur.id, cur.nextCursor))
+				cmds = append(cmds, loadAlbumsPage(m.client, cur.id, cur.nextCursor))
 			}
 		}
-		return m, cmd
+		if newSel, ok := cur.list.SelectedItem().(item); ok && newSel != prevSel {
+			cmds = append(cmds, m.refreshPreview())
+		}
+		return m, tea.Batch(cmds...)
 	}
 	return m, nil
 }
@@ -741,24 +832,139 @@ func (m Model) View() string {
 		return renderHelp(m.width, m.height)
 	}
 
-	cur := m.tabs[m.activeTab]
-	var body string
-	if len(cur) == 0 {
-		body = "loading…"
-	} else {
-		s := cur[len(cur)-1]
-		body = s.list.View()
-		if s.kind == screenQueue && m.showCoverArt {
-			_, h := m.contentSize()
-			if _, artW := queueSplit(m.width, h); artW > 0 {
+	var header string
+	if m.showTabBar {
+		header = renderTabBar(m.activeTab, m.width) + "\n"
+	}
+
+	footer := renderFooter(m.status, m.width, m.connected)
+	return header + m.renderBody() + "\n" + footer
+}
+
+// tabLabels are the section names shown in the tab bar, in tab-index order.
+var tabLabels = [numTabs]string{
+	tabArtists:   "Artists",
+	tabAlbums:    "Albums",
+	tabGenres:    "Genres",
+	tabQueue:     "Queue",
+	tabPlaylists: "Playlists",
+}
+
+func renderTabBar(active int, width int) string {
+	labels := make([]string, numTabs)
+	for i, name := range tabLabels {
+		if i == active {
+			labels[i] = tabActiveStyle.Render(name)
+		} else {
+			labels[i] = tabInactiveStyle.Render(name)
+		}
+	}
+	return tabBarStyle.Width(width).Render(strings.Join(labels, "   "))
+}
+
+// renderBody draws the active tab's content: the Queue tab stays a single
+// full-width list (plus its own cover-art pane), while every other tab
+// renders as Miller columns — parent (one level up, if any) | current
+// (where the cursor lives) | preview (one level ahead, if the current
+// selection has children) — so browsing never needs a breadcrumb: the
+// column headers either side of "current" show that context spatially.
+func (m Model) renderBody() string {
+	stack := m.tabs[m.activeTab]
+	if len(stack) == 0 {
+		return "loading…"
+	}
+	cur := stack[len(stack)-1]
+	w, h := m.contentSize()
+
+	if cur.kind == screenQueue {
+		body := cur.list.View()
+		if m.showCoverArt {
+			if _, artW := queueSplit(w, h); artW > 0 {
 				gap := lipgloss.NewStyle().Width(queueArtGap).Height(h).Render("")
 				body = lipgloss.JoinHorizontal(lipgloss.Top, body, gap, m.renderQueueArt(artW, h))
 			}
 		}
+		return body
 	}
 
-	footer := renderFooter(m.status, m.width, m.connected)
-	return body + "\n" + footer
+	const gapWidth = 1
+	hasParent := len(stack) > 1
+	hasPreview := m.preview != nil
+
+	n := 1
+	if hasParent {
+		n++
+	}
+	if hasPreview {
+		n++
+	}
+	widths := splitMillerWidths(w-(n-1)*gapWidth, [3]bool{hasParent, true, hasPreview})
+
+	var cols []string
+	wi := 0
+	if hasParent {
+		lc := stack[len(stack)-2].list
+		lc.SetSize(widths[wi], h)
+		cols = append(cols, lc.View())
+		wi++
+	}
+	{
+		lc := cur.list
+		lc.SetSize(widths[wi], h)
+		cols = append(cols, lc.View())
+		wi++
+	}
+	if hasPreview {
+		lc := m.preview.list
+		lc.SetSize(widths[wi], h)
+		cols = append(cols, lc.View())
+	}
+
+	gap := lipgloss.NewStyle().Width(gapWidth).Height(h).Render("")
+	body := cols[0]
+	for _, c := range cols[1:] {
+		body = lipgloss.JoinHorizontal(lipgloss.Top, body, gap, c)
+	}
+	return body
+}
+
+// millerColWeights are the relative widths for (parent, current, preview)
+// when all three are showing — current wider than parent, preview widest —
+// matching ranger's own growing-rightward column proportions.
+var millerColWeights = [3]int{2, 3, 4}
+
+// splitMillerWidths divides total width across whichever of the three
+// Miller columns are present, in (parent, current, preview) order,
+// dropping absent slots and redistributing their share proportionally
+// among the rest. The last present column absorbs any rounding remainder
+// so the returned widths always sum to total.
+func splitMillerWidths(total int, present [3]bool) []int {
+	sum := 0
+	remaining := 0
+	for i, ok := range present {
+		if ok {
+			sum += millerColWeights[i]
+			remaining++
+		}
+	}
+	if sum == 0 {
+		return nil
+	}
+	widths := make([]int, 0, remaining)
+	used := 0
+	for i, ok := range present {
+		if !ok {
+			continue
+		}
+		remaining--
+		w := total * millerColWeights[i] / sum
+		if remaining == 0 {
+			w = total - used
+		}
+		widths = append(widths, w)
+		used += w
+	}
+	return widths
 }
 
 // renderQueueArt renders the now-playing track's cover art (if it's been

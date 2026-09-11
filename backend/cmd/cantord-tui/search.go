@@ -373,8 +373,9 @@ func (m *Model) commitSearchSelection() tea.Cmd {
 }
 
 // jumpToSearchLocation is navigate mode's "into": switch to the item's home
-// tab (reset to root so the breadcrumb reads cleanly) and drill straight to
-// where it lives, pre-selecting it when it's a track within its album.
+// tab (reset to root so it lands cleanly instead of stacking onto wherever
+// that tab was last left) and drill straight to where it lives, pre-selecting
+// it when it's a track within its album.
 func (m *Model) jumpToSearchLocation() tea.Cmd {
 	if m.searchOverlay == nil {
 		return nil
@@ -384,17 +385,15 @@ func (m *Model) jumpToSearchLocation() tea.Cmd {
 		return nil
 	}
 	switch it.kind {
-	case itemArtist:
-		rootCmd := m.jumpToTab(tabArtists)
-		s, cmd := newAlbumsByArtistScreen(m.client, it.id)
+	case itemArtist, itemAlbum:
+		tab := tabAlbums
+		if it.kind == itemArtist {
+			tab = tabArtists
+		}
+		rootCmd := m.jumpToTab(tab)
+		s, cmd, _ := screenForItem(m.client, it)
 		m.push(s)
-		return tea.Batch(rootCmd, cmd)
-
-	case itemAlbum:
-		rootCmd := m.jumpToTab(tabAlbums)
-		s, cmd := newAlbumTracksScreen(m.client, *it.album)
-		m.push(s)
-		return tea.Batch(rootCmd, cmd)
+		return tea.Batch(rootCmd, cmd, m.refreshPreview())
 
 	case itemTrack:
 		rootCmd := m.jumpToTab(tabAlbums)
@@ -402,7 +401,7 @@ func (m *Model) jumpToSearchLocation() tea.Cmd {
 		s, cmd := newAlbumTracksScreen(m.client, album)
 		s.selectID = it.id
 		m.push(s)
-		return tea.Batch(rootCmd, cmd)
+		return tea.Batch(rootCmd, cmd, m.refreshPreview())
 	}
 	return nil
 }
