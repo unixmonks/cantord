@@ -27,6 +27,14 @@ import (
 // screen; other screens leave it nil and just never show the marker.
 type trackColumnsDelegate struct {
 	playingIndex *int
+
+	// focus marks a delegate used only for rendering a Miller column's
+	// render-only copy when that column is the one actually being
+	// navigated right now (see renderBody in model.go): its highlighted
+	// row is colored with the theme's lighter focus tint instead of full
+	// accent, so it reads as visually distinct from the parent/preview
+	// columns' plain-accent selections either side of it.
+	focus bool
 }
 
 const (
@@ -168,7 +176,11 @@ func (d trackColumnsDelegate) Render(w io.Writer, m list.Model, index int, listI
 	case m.FilterState() == list.Filtering && m.FilterValue() == "":
 		line = styles.DimmedTitle.Render(line)
 	case index == m.Index() && m.FilterState() != list.Filtering:
-		line = styles.SelectedTitle.Foreground(accent).BorderForeground(accent).Render(line)
+		c := accent
+		if d.focus {
+			c = focus
+		}
+		line = styles.SelectedTitle.Foreground(c).BorderForeground(c).Render(line)
 	case isPlaying:
 		line = styles.NormalTitle.Foreground(accent).Bold(true).Render(line)
 	default:

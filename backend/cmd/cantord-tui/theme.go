@@ -17,6 +17,13 @@ import (
 type Theme struct {
 	Name   string
 	Accent string
+	// Focus is a lighter tint of Accent, used for the highlighted row in
+	// whichever Miller column is actually being navigated right now (the
+	// "current" column). The parent and preview columns either side of it
+	// keep the plain Accent highlight, so the one column your cursor keys
+	// actually move within always reads as visually distinct from the
+	// merely-contextual columns around it.
+	Focus  string
 	Subtle string
 	Good   string
 	Bad    string
@@ -26,6 +33,7 @@ var builtinThemes = map[string]Theme{
 	"dracula": {
 		Name:   "Dracula",
 		Accent: "#bd93f9",
+		Focus:  "#dbc4fc",
 		Subtle: "#6272a4",
 		Good:   "#50fa7b",
 		Bad:    "#ff5555",
@@ -33,6 +41,7 @@ var builtinThemes = map[string]Theme{
 	"nord": {
 		Name:   "Nord",
 		Accent: "#88c0d0",
+		Focus:  "#bedce5",
 		Subtle: "#4c566a",
 		Good:   "#a3be8c",
 		Bad:    "#bf616a",
@@ -40,6 +49,7 @@ var builtinThemes = map[string]Theme{
 	"gruvbox": {
 		Name:   "Gruvbox Dark",
 		Accent: "#fe8019",
+		Focus:  "#feb980",
 		Subtle: "#928374",
 		Good:   "#b8bb26",
 		Bad:    "#fb4934",
@@ -47,6 +57,7 @@ var builtinThemes = map[string]Theme{
 	"catppuccin": {
 		Name:   "Catppuccin Mocha",
 		Accent: "#cba6f7",
+		Focus:  "#e2cefb",
 		Subtle: "#6c7086",
 		Good:   "#a6e3a1",
 		Bad:    "#f38ba8",
@@ -54,6 +65,7 @@ var builtinThemes = map[string]Theme{
 	"solarized": {
 		Name:   "Solarized Dark",
 		Accent: "#268bd2",
+		Focus:  "#88bfe6",
 		Subtle: "#586e75",
 		Good:   "#859900",
 		Bad:    "#dc322f",
@@ -61,6 +73,7 @@ var builtinThemes = map[string]Theme{
 	"tokyonight": {
 		Name:   "Tokyo Night",
 		Accent: "#7aa2f7",
+		Focus:  "#b6ccfb",
 		Subtle: "#565f89",
 		Good:   "#9ece6a",
 		Bad:    "#f7768e",
@@ -68,6 +81,7 @@ var builtinThemes = map[string]Theme{
 	"onedark": {
 		Name:   "One Dark",
 		Accent: "#61afef",
+		Focus:  "#a8d3f6",
 		Subtle: "#5c6370",
 		Good:   "#98c379",
 		Bad:    "#e06c75",
@@ -75,6 +89,7 @@ var builtinThemes = map[string]Theme{
 	"rosepine": {
 		Name:   "Rosé Pine",
 		Accent: "#c4a7e7",
+		Focus:  "#dfcff2",
 		Subtle: "#6e6a86",
 		Good:   "#31748f",
 		Bad:    "#eb6f92",
@@ -82,6 +97,7 @@ var builtinThemes = map[string]Theme{
 	"everforest": {
 		Name:   "Everforest",
 		Accent: "#a7c080",
+		Focus:  "#cfdcb9",
 		Subtle: "#859289",
 		Good:   "#83c092",
 		Bad:    "#e67e80",
@@ -89,6 +105,7 @@ var builtinThemes = map[string]Theme{
 	"monokai": {
 		Name:   "Monokai",
 		Accent: "#66d9ef",
+		Focus:  "#abeaf6",
 		Subtle: "#75715e",
 		Good:   "#a6e22e",
 		Bad:    "#f92672",
@@ -115,12 +132,13 @@ func themeLabel(name string) string {
 // for the default theme, or plain fixed lipgloss.Colors for everything
 // else (including a custom override — see resolveTheme).
 type palette struct {
-	accent, subtle, good, bad lipgloss.TerminalColor
+	accent, focus, subtle, good, bad lipgloss.TerminalColor
 }
 
 func defaultPalette() palette {
 	return palette{
 		accent: lipgloss.AdaptiveColor{Light: "#7048e8", Dark: "#a78bfa"},
+		focus:  lipgloss.AdaptiveColor{Light: "#b09af2", Dark: "#cfbffc"},
 		subtle: lipgloss.AdaptiveColor{Light: "#888888", Dark: "#888888"},
 		good:   lipgloss.AdaptiveColor{Light: "#2b8a3e", Dark: "#69db7c"},
 		bad:    lipgloss.AdaptiveColor{Light: "#c92a2a", Dark: "#ff8787"},
@@ -130,6 +148,7 @@ func defaultPalette() palette {
 func (t Theme) palette() palette {
 	return palette{
 		accent: lipgloss.Color(t.Accent),
+		focus:  lipgloss.Color(t.Focus),
 		subtle: lipgloss.Color(t.Subtle),
 		good:   lipgloss.Color(t.Good),
 		bad:    lipgloss.Color(t.Bad),
@@ -154,7 +173,7 @@ func basePalette(name string) (palette, error) {
 // derived from them (see buildStyles in styles.go). Safe to call again at
 // runtime — cycling with ctrl+t is exactly that.
 func applyPalette(p palette) {
-	accent, subtle, good, bad = p.accent, p.subtle, p.good, p.bad
+	accent, focus, subtle, good, bad = p.accent, p.focus, p.subtle, p.good, p.bad
 	buildStyles()
 }
 
@@ -167,6 +186,7 @@ func applyPalette(p palette) {
 type ThemeOverride struct {
 	Base   string `toml:"base"`
 	Accent string `toml:"accent"`
+	Focus  string `toml:"focus"`
 	Subtle string `toml:"subtle"`
 	Good   string `toml:"good"`
 	Bad    string `toml:"bad"`
@@ -202,6 +222,9 @@ func resolveTheme(flagName, path string) (palette, string, error) {
 
 	if ov.Accent != "" {
 		p.accent = lipgloss.Color(ov.Accent)
+	}
+	if ov.Focus != "" {
+		p.focus = lipgloss.Color(ov.Focus)
 	}
 	if ov.Subtle != "" {
 		p.subtle = lipgloss.Color(ov.Subtle)

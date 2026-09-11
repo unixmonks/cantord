@@ -11,6 +11,13 @@ import (
 // which sets these and calls buildStyles again.
 var (
 	accent lipgloss.TerminalColor
+	// focus is a lighter tint of accent, used only for the highlighted row
+	// in whichever Miller column is actually being navigated right now
+	// (see styledFocusDelegate and trackColumnsDelegate's focus field) —
+	// the parent and preview columns either side of it keep the plain
+	// accent highlight, so the column your cursor keys actually move
+	// within is always the visually brighter one.
+	focus  lipgloss.TerminalColor
 	subtle lipgloss.TerminalColor
 	good   lipgloss.TerminalColor
 	bad    lipgloss.TerminalColor
@@ -93,5 +100,20 @@ func styledDefaultDelegate() list.DefaultDelegate {
 	d.SetSpacing(0)
 	d.Styles.SelectedTitle = d.Styles.SelectedTitle.Foreground(accent).BorderForeground(accent)
 	d.Styles.SelectedDesc = d.Styles.SelectedDesc.Foreground(accent).BorderForeground(accent)
+	return d
+}
+
+// styledFocusDelegate is styledDefaultDelegate with its selected-row
+// highlight recolored to the theme's lighter focus tint instead of the
+// full accent — used only for a compact-list screen (Artists, Albums by
+// Artist, Genres, Playlists, Album Tracks) when it's the Miller column
+// actually being navigated right now. See renderBody's render-only
+// delegate swap.
+func styledFocusDelegate() list.DefaultDelegate {
+	d := list.NewDefaultDelegate()
+	d.ShowDescription = false
+	d.SetSpacing(0)
+	d.Styles.SelectedTitle = d.Styles.SelectedTitle.Foreground(focus).BorderForeground(focus)
+	d.Styles.SelectedDesc = d.Styles.SelectedDesc.Foreground(focus).BorderForeground(focus)
 	return d
 }

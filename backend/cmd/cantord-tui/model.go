@@ -976,6 +976,14 @@ type millerColumn struct {
 	screen *screen
 	width  int
 	offset int
+	// active marks the column actually being navigated right now — the
+	// tab's current screen, where j/k and h/l act. renderBody draws its
+	// highlighted row with the theme's lighter focus tint so it always
+	// reads as visually distinct from the parent and preview columns
+	// either side of it, which keep the plain accent highlight: those are
+	// just context (where you came from, and what's one step ahead), not
+	// where your cursor keys currently do anything.
+	active bool
 }
 
 // millerColumns lays out the active tab's current screen as up to three
@@ -1015,7 +1023,7 @@ func (m Model) millerColumns(width int) []millerColumn {
 		offset += widths[wi] + gapWidth
 		wi++
 	}
-	cols = append(cols, millerColumn{screen: cur, width: widths[wi], offset: offset})
+	cols = append(cols, millerColumn{screen: cur, width: widths[wi], offset: offset, active: true})
 	offset += widths[wi] + gapWidth
 	wi++
 	if hasPreview {
@@ -1051,6 +1059,15 @@ func (m Model) renderBody() string {
 	for i, c := range cols {
 		lc := c.screen.list
 		lc.SetSize(c.width, h)
+		if c.active {
+			// Swap in the lighter-highlight delegate on this render-only
+			// copy so the column actually being navigated reads as
+			// visually distinct from its plain-accent parent/preview
+			// neighbors, without touching the actual screen's delegate
+			// (kept at full accent for if this screen stops being current
+			// — e.g. goBack demoting it back to a parent).
+			lc.SetDelegate(focusDelegateFor(c.screen.kind))
+		}
 		if i == 0 {
 			body = lc.View()
 			continue
@@ -1058,6 +1075,19 @@ func (m Model) renderBody() string {
 		body = lipgloss.JoinHorizontal(lipgloss.Top, body, gap, lc.View())
 	}
 	return body
+}
+
+// focusDelegateFor returns the lighter-highlight delegate variant for
+// whichever Miller column is currently being navigated, matching whichever
+// delegate that screen kind normally uses (see newListWithDelegate's
+// callers in screen.go).
+func focusDelegateFor(kind screenKind) list.ItemDelegate {
+	switch kind {
+	case screenGenreTracks, screenPlaylistTracks:
+		return trackColumnsDelegate{focus: true}
+	default:
+		return styledFocusDelegate()
+	}
 }
 
 // millerColWeights are the relative widths for (parent, current, preview)
