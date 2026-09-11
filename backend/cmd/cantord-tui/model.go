@@ -72,6 +72,13 @@ type Model struct {
 	// showTabBar is the "ctrl+b" toggle for the top-of-screen section bar.
 	showTabBar bool
 
+	// themeName is the active theme's key in themeOrder/builtinThemes ("" for
+	// the adaptive default) — see theme.go.
+	themeName string
+
+	// themePicker is the "ctrl+t" theme picker popup — see theme.go.
+	themePicker *themePicker
+
 	// preview is the Miller-column "one level ahead" pane for whatever's
 	// selected in the active tab's current screen — see refreshPreview.
 	// It's not part of any tab's navigation stack; "into" promotes it into
@@ -81,7 +88,7 @@ type Model struct {
 	previewKey string
 }
 
-func newModel(client *Client, events chan tea.Msg) Model {
+func newModel(client *Client, events chan tea.Msg, themeName string) Model {
 	playingIndex := -1
 	m := Model{
 		client:       client,
@@ -92,6 +99,7 @@ func newModel(client *Client, events chan tea.Msg) Model {
 		playingIndex: &playingIndex,
 		showCoverArt: true,
 		showTabBar:   true,
+		themeName:    themeName,
 	}
 	s, cmd := newArtistsScreen(client)
 	m.tabs[tabArtists] = []screen{s}
@@ -124,13 +132,19 @@ func (m *Model) currentScreen() *screen {
 
 func (m *Model) footerHeight() int { return 3 } // border-top + 2 content lines
 
-// headerHeight is the tab bar's height when it's showing: a label row plus
-// its bottom border.
+// headerHeight is the tab bar's height when it's showing (a label row plus
+// its bottom border) plus one more row when the active screen is filtering
+// — see renderFilterRow, which draws in the same spot the old breadcrumb
+// title used to.
 func (m *Model) headerHeight() int {
-	if !m.showTabBar {
-		return 0
+	h := 0
+	if m.showTabBar {
+		h += 2
 	}
-	return 2
+	if cur := m.currentScreen(); cur != nil && cur.list.FilterState() != list.Unfiltered {
+		h++
+	}
+	return h
 }
 
 func (m *Model) contentSize() (int, int) {
@@ -181,6 +195,32 @@ func (m *Model) resizeAll() {
 	}
 }
 
+// retheme applies a new palette and re-styles every already-constructed
+// screen (every tab's stack, plus the Miller-column preview) so a live
+// theme switch (ctrl+t) takes effect everywhere instantly. A list
+// delegate's colors are otherwise baked in once at construction and
+// wouldn't pick up a later palette change on their own — see
+// styledDefaultDelegate in styles.go.
+func (m *Model) retheme(p palette) {
+	applyPalette(p)
+	restyle := func(s *screen) {
+		switch s.kind {
+		case screenGenreTracks, screenQueue, screenPlaylistTracks:
+			// trackColumnsDelegate reads the theme live at render time.
+		default:
+			s.list.SetDelegate(styledDefaultDelegate())
+		}
+	}
+	for t := range m.tabs {
+		for i := range m.tabs[t] {
+			restyle(&m.tabs[t][i])
+		}
+	}
+	if m.preview != nil {
+		restyle(m.preview)
+	}
+}
+
 // push adds s on top of the active tab's navigation stack. There's no
 // breadcrumb text to maintain: with Miller columns, the parent and preview
 // panes either side of it show that context spatially instead.
@@ -195,9 +235,14 @@ func (m *Model) goBack() tea.Cmd {
 		return nil
 	}
 	if cur.list.FilterState() != list.Unfiltered {
+		prevSel, _ := cur.list.SelectedItem().(item)
 		var cmd tea.Cmd
 		cur.list, cmd = cur.list.Update(tea.KeyMsg{Type: tea.KeyEsc})
-		return cmd
+		cmds := []tea.Cmd{cmd}
+		if newSel, ok := cur.list.SelectedItem().(item); ok && newSel != prevSel {
+			cmds = append(cmds, m.refreshPreview())
+		}
+		return tea.Batch(cmds...)
 	}
 	if len(m.tabs[m.activeTab]) > 1 {
 		m.tabs[m.activeTab] = m.tabs[m.activeTab][:len(m.tabs[m.activeTab])-1]
@@ -618,9 +663,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	if cur := m.currentScreen(); cur != nil {
+		prevSel, _ := cur.list.SelectedItem().(item)
 		var cmd tea.Cmd
 		cur.list, cmd = cur.list.Update(msg)
-		return m, cmd
+		cmds := []tea.Cmd{cmd}
+		// Filtering resolves asynchronously (bubbles sends a FilterMatchesMsg
+		// once matching finishes), so it's this fallthrough — not handleKey's
+		// Filtering branch — that actually sees the selection land on the new
+		// top match. Without this, the Miller-column preview would keep
+		// showing whatever was selected before you started typing.
+		if newSel, ok := cur.list.SelectedItem().(item); ok && newSel != prevSel {
+			cmds = append(cmds, m.refreshPreview())
+		}
+		return m, tea.Batch(cmds...)
 	}
 	return m, nil
 }
@@ -678,6 +733,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleSearchKey(msg)
 	}
 
+	if m.themePicker != nil {
+		return m.handleThemePickerKey(msg)
+	}
+
 	if m.prompt != nil {
 		switch msg.String() {
 		case "esc":
@@ -708,9 +767,14 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	cur := m.currentScreen()
 
 	if cur != nil && cur.list.FilterState() == list.Filtering {
+		prevSel, _ := cur.list.SelectedItem().(item)
 		var cmd tea.Cmd
 		cur.list, cmd = cur.list.Update(msg)
-		return m, cmd
+		cmds := []tea.Cmd{cmd}
+		if newSel, ok := cur.list.SelectedItem().(item); ok && newSel != prevSel {
+			cmds = append(cmds, m.refreshPreview())
+		}
+		return m, tea.Batch(cmds...)
 	}
 
 	wasPendingD := m.pendingD
@@ -793,6 +857,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showTabBar = !m.showTabBar
 		m.resizeAll()
 		return m, nil
+
+	case key.Matches(msg, keys.cycleTheme):
+		m.themePicker = newThemePicker(m.themeName)
+		return m, nil
 	}
 
 	if cur != nil {
@@ -823,6 +891,10 @@ func (m Model) View() string {
 		return renderSearchOverlay(m.width, m.height, m.searchOverlay)
 	}
 
+	if m.themePicker != nil {
+		return renderThemePicker(m.width, m.height, m.themePicker)
+	}
+
 	if m.prompt != nil {
 		box := promptBoxStyle.Render(fmt.Sprintf("Add to playlist\n\n%s\n\n%s", m.prompt.trackLabel, m.prompt.input.View()))
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
@@ -835,6 +907,9 @@ func (m Model) View() string {
 	var header string
 	if m.showTabBar {
 		header = renderTabBar(m.activeTab, m.width) + "\n"
+	}
+	if cur := m.currentScreen(); cur != nil && cur.list.FilterState() != list.Unfiltered {
+		header += renderFilterRow(cur.list, m.width) + "\n"
 	}
 
 	footer := renderFooter(m.status, m.width, m.connected)
@@ -860,6 +935,15 @@ func renderTabBar(active int, width int) string {
 		}
 	}
 	return tabBarStyle.Width(width).Render(strings.Join(labels, "   "))
+}
+
+// renderFilterRow draws one shared, full-width filter box in the header —
+// where the breadcrumb title used to sit — instead of the per-list filter
+// row bubbles would otherwise reserve inside whichever Miller column the
+// filtered screen happens to occupy (which would misalign it against its
+// parent/preview neighbors).
+func renderFilterRow(l list.Model, width int) string {
+	return lipgloss.NewStyle().Width(width).Padding(0, 1).Render(l.FilterInput.View())
 }
 
 // renderBody draws the active tab's content: the Queue tab stays a single

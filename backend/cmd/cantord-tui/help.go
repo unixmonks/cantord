@@ -57,6 +57,7 @@ func buildHelpSections() {
 			fromBinding(keys.nextTab),
 			fromBinding(keys.prevTab),
 			fromBinding(keys.toggleTabBar),
+			fromBinding(keys.cycleTheme),
 		}},
 		{"Playback", []helpEntry{
 			fromBinding(keys.playPause),

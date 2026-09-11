@@ -20,8 +20,10 @@ func main() {
 		server = "http://localhost:8080"
 	}
 	keysPath := os.Getenv("CANTORD_TUI_KEYS")
+	themeName := os.Getenv("CANTORD_TUI_THEME")
 	flag.StringVar(&server, "server", server, "cantord daemon address")
 	flag.StringVar(&keysPath, "keys", keysPath, "path to a TOML file of keyboard shortcut overrides (optional)")
+	flag.StringVar(&themeName, "theme", themeName, "built-in theme: dracula, nord, gruvbox, catppuccin, solarized, tokyonight, onedark, rosepine, everforest, monokai (omit for the default adaptive palette; ctrl+t picks one live)")
 	flag.Parse()
 
 	keyCfg, err := LoadKeyConfig(keysPath)
@@ -30,6 +32,16 @@ func main() {
 		os.Exit(1)
 	}
 	applyKeyConfig(keyCfg)
+
+	// The same keybindings file may also carry a [theme] table (see
+	// ThemeOverride in theme.go); themeName here is the flag/env override,
+	// which wins over that file's [theme].base if both are set.
+	pal, resolvedTheme, err := resolveTheme(themeName, keysPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "cantord-tui:", err)
+		os.Exit(1)
+	}
+	applyPalette(pal)
 
 	client := NewClient(server)
 
@@ -64,7 +76,7 @@ func main() {
 		}
 	}()
 
-	m := newModel(client, events)
+	m := newModel(client, events, resolvedTheme)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "cantord-tui:", err)

@@ -24,13 +24,15 @@ const (
 
 // screen is one entry in a tab's navigation stack. Every screen owns its
 // own list.Model so cursor position, scroll offset, and any active filter
-// are preserved when the user drills in and backs out.
+// are preserved when the user drills in and backs out. There's no title
+// bar to give it a heading — the Miller-column layout (see renderBody in
+// model.go) already shows a screen's place in the hierarchy spatially, via
+// the parent and preview panes either side of it.
 type screen struct {
-	id    int
-	kind  screenKind
-	title string
-	list  list.Model
-	ctx   string // artist / genre / playlist name this screen was opened for
+	id   int
+	kind screenKind
+	list list.Model
+	ctx  string // artist / genre / playlist name this screen was opened for
 
 	// screenAlbums pagination (the only list that isn't fetched in full).
 	nextCursor  string
@@ -53,26 +55,28 @@ func newScreenID() int {
 // Genres, Playlists) — a single-line-per-item delegate instead of the
 // default's title+description pair, so the list isn't full of empty second
 // lines.
-func newCompactList(title string) list.Model {
-	delegate := list.NewDefaultDelegate()
-	delegate.ShowDescription = false
-	delegate.SetSpacing(0)
-	return newListWithDelegate(title, delegate)
+func newCompactList() list.Model {
+	return newListWithDelegate(styledDefaultDelegate())
 }
 
-func newListWithDelegate(title string, delegate list.ItemDelegate) list.Model {
+func newListWithDelegate(delegate list.ItemDelegate) list.Model {
 	l := list.New(nil, delegate, 0, 0)
-	l.Title = title
-	l.Styles.Title = listTitleStyle
-	// The default TitleBar style pads a blank line below the title, and the
-	// status bar (the "N items" line) adds another — both just push the
-	// actual rows down for no benefit here.
-	l.Styles.TitleBar = l.Styles.TitleBar.Padding(0, 0, 0, 2)
+	// No title bar, status bar, pagination dots, or help line — every row
+	// they'd otherwise take goes to the item list instead, and Miller
+	// columns already show a screen's place in the hierarchy spatially.
+	l.SetShowTitle(false)
 	l.SetShowStatusBar(false)
-	// No pagination dots or help line either — every row they'd otherwise
-	// take goes to the item list instead.
 	l.SetShowPagination(false)
 	l.SetShowHelp(false)
+	// bubbles reserves a row for its own title/filter bar whenever
+	// ShowFilter is on, regardless of whether a filter is actually active.
+	// That row lives inside whichever column the filtered screen happens to
+	// be — misaligning it against its Miller-column neighbors — so it's
+	// left permanently off; renderFilterRow in model.go draws one shared,
+	// full-width filter row in the app header instead. This has no effect
+	// on "/" itself: FilteringEnabled (left on) is what actually lets it
+	// trigger, per bubbles' own list.go.
+	l.SetShowFilter(false)
 
 	// listKeys is built from the (possibly user-overridden) key config in
 	// keys.go/keyconfig.go — see applyKeyConfig for quit/help/paging details.
@@ -102,7 +106,7 @@ func setItems(l *list.Model, items []item) tea.Cmd {
 // loads its data. ---
 
 func newArtistsScreen(c *Client) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenArtists, title: "Artists", list: newCompactList("Artists")}
+	s := screen{id: newScreenID(), kind: screenArtists, list: newCompactList()}
 	id := s.id
 	return s, func() tea.Msg {
 		artists, err := c.Artists()
@@ -115,7 +119,7 @@ func newArtistsScreen(c *Client) (screen, tea.Cmd) {
 }
 
 func newAlbumsByArtistScreen(c *Client, artist string) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenAlbumsByArtist, title: artist, ctx: artist, list: newCompactList(artist)}
+	s := screen{id: newScreenID(), kind: screenAlbumsByArtist, ctx: artist, list: newCompactList()}
 	id := s.id
 	return s, func() tea.Msg {
 		albums, err := c.AlbumsByArtist(artist)
@@ -131,7 +135,7 @@ func newAlbumsByArtistScreen(c *Client, artist string) (screen, tea.Cmd) {
 }
 
 func newAlbumsScreen(c *Client) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenAlbums, title: "Albums", list: newCompactList("Albums")}
+	s := screen{id: newScreenID(), kind: screenAlbums, list: newCompactList()}
 	return s, loadAlbumsPage(c, s.id, "")
 }
 
@@ -147,7 +151,7 @@ func loadAlbumsPage(c *Client, id int, cursor string) tea.Cmd {
 }
 
 func newAlbumTracksScreen(c *Client, album Album) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenAlbumTracks, title: album.Name, ctx: album.ID, list: newCompactList(album.Name)}
+	s := screen{id: newScreenID(), kind: screenAlbumTracks, ctx: album.ID, list: newCompactList()}
 	id := s.id
 	return s, func() tea.Msg {
 		tracks, err := c.AlbumTracks(album.ID)
@@ -167,7 +171,7 @@ func newAlbumTracksScreen(c *Client, album Album) (screen, tea.Cmd) {
 }
 
 func newGenresScreen(c *Client) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenGenres, title: "Genres", list: newCompactList("Genres")}
+	s := screen{id: newScreenID(), kind: screenGenres, list: newCompactList()}
 	id := s.id
 	return s, func() tea.Msg {
 		genres, err := c.Genres()
@@ -180,7 +184,7 @@ func newGenresScreen(c *Client) (screen, tea.Cmd) {
 }
 
 func newGenreTracksScreen(c *Client, genre string) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenGenreTracks, title: genre, ctx: genre, list: newListWithDelegate(genre, trackColumnsDelegate{})}
+	s := screen{id: newScreenID(), kind: screenGenreTracks, ctx: genre, list: newListWithDelegate(trackColumnsDelegate{})}
 	id := s.id
 	return s, func() tea.Msg {
 		tracks, err := c.GenreTracks(genre)
@@ -193,7 +197,7 @@ func newGenreTracksScreen(c *Client, genre string) (screen, tea.Cmd) {
 }
 
 func newQueueScreen(c *Client, playingIndex *int) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenQueue, title: "Queue", list: newListWithDelegate("Queue", trackColumnsDelegate{playingIndex: playingIndex})}
+	s := screen{id: newScreenID(), kind: screenQueue, list: newListWithDelegate(trackColumnsDelegate{playingIndex: playingIndex})}
 	return s, loadQueue(c, s.id)
 }
 
@@ -209,7 +213,7 @@ func loadQueue(c *Client, id int) tea.Cmd {
 }
 
 func newPlaylistsScreen(c *Client) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenPlaylists, title: "Playlists", list: newCompactList("Playlists")}
+	s := screen{id: newScreenID(), kind: screenPlaylists, list: newCompactList()}
 	id := s.id
 	return s, func() tea.Msg {
 		names, err := c.Playlists()
@@ -222,7 +226,7 @@ func newPlaylistsScreen(c *Client) (screen, tea.Cmd) {
 }
 
 func newPlaylistTracksScreen(c *Client, name string) (screen, tea.Cmd) {
-	s := screen{id: newScreenID(), kind: screenPlaylistTracks, title: name, ctx: name, list: newListWithDelegate(name, trackColumnsDelegate{})}
+	s := screen{id: newScreenID(), kind: screenPlaylistTracks, ctx: name, list: newListWithDelegate(trackColumnsDelegate{})}
 	id := s.id
 	return s, func() tea.Msg {
 		tracks, err := c.Playlist(name)

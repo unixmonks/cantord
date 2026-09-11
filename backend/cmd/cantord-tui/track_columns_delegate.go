@@ -168,7 +168,7 @@ func (d trackColumnsDelegate) Render(w io.Writer, m list.Model, index int, listI
 	case m.FilterState() == list.Filtering && m.FilterValue() == "":
 		line = styles.DimmedTitle.Render(line)
 	case index == m.Index() && m.FilterState() != list.Filtering:
-		line = styles.SelectedTitle.Render(line)
+		line = styles.SelectedTitle.Foreground(accent).BorderForeground(accent).Render(line)
 	case isPlaying:
 		line = styles.NormalTitle.Foreground(accent).Bold(true).Render(line)
 	default:

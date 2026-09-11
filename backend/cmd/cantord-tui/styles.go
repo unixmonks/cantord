@@ -1,35 +1,65 @@
 package main
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/lipgloss"
+)
 
+// accent/subtle/good/bad are the four semantic colors every style below
+// derives from. They're package vars rather than constants because a theme
+// can be switched live at runtime (ctrl+t) — see theme.go's applyPalette,
+// which sets these and calls buildStyles again.
 var (
-	accent = lipgloss.AdaptiveColor{Light: "#7048e8", Dark: "#a78bfa"}
-	subtle = lipgloss.AdaptiveColor{Light: "#888888", Dark: "#888888"}
-	good   = lipgloss.AdaptiveColor{Light: "#2b8a3e", Dark: "#69db7c"}
-	bad    = lipgloss.AdaptiveColor{Light: "#c92a2a", Dark: "#ff8787"}
+	accent lipgloss.TerminalColor
+	subtle lipgloss.TerminalColor
+	good   lipgloss.TerminalColor
+	bad    lipgloss.TerminalColor
 
+	listTitleStyle lipgloss.Style
+
+	footerStyle      lipgloss.Style
+	footerLabelStyle lipgloss.Style
+
+	tabBarStyle      lipgloss.Style
+	tabActiveStyle   lipgloss.Style
+	tabInactiveStyle lipgloss.Style
+
+	connectedStyle    lipgloss.Style
+	disconnectedStyle lipgloss.Style
+
+	errorStyle lipgloss.Style
+
+	searchSelectedStyle lipgloss.Style
+
+	promptBoxStyle lipgloss.Style
+)
+
+// buildStyles derives every lipgloss.Style in the app from the current
+// accent/subtle/good/bad colors. Called once at startup and again whenever
+// the theme changes.
+func buildStyles() {
 	listTitleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(accent)
+		Bold(true).
+		Foreground(accent)
 
 	footerStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderTop(true).
-			BorderForeground(subtle).
-			Padding(0, 1)
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderTop(true).
+		BorderForeground(subtle).
+		Padding(0, 1)
 
 	footerLabelStyle = lipgloss.NewStyle().Foreground(subtle)
 
 	tabBarStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderBottom(true).
-			BorderForeground(subtle).
-			Padding(0, 1)
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderBottom(true).
+		BorderForeground(subtle).
+		Padding(0, 1)
 
-	tabActiveStyle   = lipgloss.NewStyle().Bold(true).Foreground(accent)
+	tabActiveStyle = lipgloss.NewStyle().Bold(true).Foreground(accent)
 	tabInactiveStyle = lipgloss.NewStyle().Foreground(subtle)
 
-	connectedStyle    = lipgloss.NewStyle().Foreground(good)
+	connectedStyle = lipgloss.NewStyle().Foreground(good)
 	disconnectedStyle = lipgloss.NewStyle().Foreground(bad).Bold(true)
 
 	errorStyle = lipgloss.NewStyle().Foreground(bad)
@@ -37,7 +67,31 @@ var (
 	searchSelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(accent)
 
 	promptBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(accent).
-			Padding(1, 2)
-)
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(accent).
+		Padding(1, 2)
+}
+
+// styledDefaultDelegate is list.NewDefaultDelegate() configured the way
+// every compact (single-line, title-only) list in the app wants it — no
+// description row, no inter-item spacing — with its selected-row highlight
+// recolored to the theme's accent instead of bubbles' built-in pink.
+// Track-columns screens (Queue, genre/playlist tracks) don't use this:
+// trackColumnsDelegate reads accent live at render time instead, so it
+// never goes stale the way a delegate baked into a list at construction
+// time would.
+//
+// Both newCompactList (construction) and retheme (rebuilding a live
+// screen's delegate on a theme change) call this rather than
+// list.NewDefaultDelegate() directly, so the two can't drift apart — a
+// retheme that reset ShowDescription/spacing to bubbles' defaults previously
+// reintroduced blank description lines and double-height rows on every
+// compact list after a theme switch.
+func styledDefaultDelegate() list.DefaultDelegate {
+	d := list.NewDefaultDelegate()
+	d.ShowDescription = false
+	d.SetSpacing(0)
+	d.Styles.SelectedTitle = d.Styles.SelectedTitle.Foreground(accent).BorderForeground(accent)
+	d.Styles.SelectedDesc = d.Styles.SelectedDesc.Foreground(accent).BorderForeground(accent)
+	return d
+}

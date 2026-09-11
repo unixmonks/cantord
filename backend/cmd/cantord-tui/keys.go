@@ -33,6 +33,7 @@ type globalKeyMap struct {
 	help                         key.Binding
 	search                       key.Binding
 	toggleTabBar                 key.Binding
+	cycleTheme                   key.Binding
 }
 
 // keys and listKeys are populated at startup by applyKeyConfig, from
@@ -83,6 +84,7 @@ func applyKeyConfig(cfg KeyConfig) {
 		help:         bindKeys(cfg.Help, "", "help"),
 		search:       bindKeys(cfg.Search, "", "search"),
 		toggleTabBar: bindKeys(cfg.ToggleTabBar, "", "toggle tab bar"),
+		cycleTheme:   bindKeys(cfg.CycleTheme, "", "theme"),
 	}
 
 	lm := list.DefaultKeyMap()
