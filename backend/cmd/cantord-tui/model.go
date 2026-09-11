@@ -141,7 +141,7 @@ func (m *Model) headerHeight() int {
 	if m.showTabBar {
 		h += 2
 	}
-	if cur := m.currentScreen(); cur != nil && cur.list.FilterState() != list.Unfiltered {
+	if _, ok := m.renderFilterRow(); ok {
 		h++
 	}
 	return h
@@ -908,8 +908,8 @@ func (m Model) View() string {
 	if m.showTabBar {
 		header = renderTabBar(m.activeTab, m.width) + "\n"
 	}
-	if cur := m.currentScreen(); cur != nil && cur.list.FilterState() != list.Unfiltered {
-		header += renderFilterRow(cur.list, m.width) + "\n"
+	if row, ok := m.renderFilterRow(); ok {
+		header += row + "\n"
 	}
 
 	footer := renderFooter(m.status, m.width, m.connected)
@@ -937,41 +937,64 @@ func renderTabBar(active int, width int) string {
 	return tabBarStyle.Width(width).Render(strings.Join(labels, "   "))
 }
 
-// renderFilterRow draws one shared, full-width filter box in the header —
-// where the breadcrumb title used to sit — instead of the per-list filter
-// row bubbles would otherwise reserve inside whichever Miller column the
-// filtered screen happens to occupy (which would misalign it against its
-// parent/preview neighbors).
-func renderFilterRow(l list.Model, width int) string {
+// renderFilterRow finds whichever screen (if any) is currently filtered —
+// possibly the Queue tab's own single list, or one of the active Miller
+// tab's parent/current/preview screens — and draws a filter box for it. A
+// Miller-column screen's box is drawn at that column's exact offset and
+// width, so it stays aligned above the right column even after "into"/
+// "back" moves the filtered screen out of the active (current) slot and
+// into the parent one, rather than disappearing or spanning columns it no
+// longer belongs to.
+func (m Model) renderFilterRow() (string, bool) {
+	stack := m.tabs[m.activeTab]
+	if len(stack) == 0 {
+		return "", false
+	}
+	if cur := stack[len(stack)-1]; cur.kind == screenQueue {
+		if cur.list.FilterState() == list.Unfiltered {
+			return "", false
+		}
+		return renderFilterBox(cur.list, m.width), true
+	}
+	for _, c := range m.millerColumns(m.width) {
+		if c.screen.list.FilterState() != list.Unfiltered {
+			return strings.Repeat(" ", c.offset) + renderFilterBox(c.screen.list, c.width), true
+		}
+	}
+	return "", false
+}
+
+func renderFilterBox(l list.Model, width int) string {
 	return lipgloss.NewStyle().Width(width).Padding(0, 1).Render(l.FilterInput.View())
 }
 
-// renderBody draws the active tab's content: the Queue tab stays a single
-// full-width list (plus its own cover-art pane), while every other tab
-// renders as Miller columns — parent (one level up, if any) | current
-// (where the cursor lives) | preview (one level ahead, if the current
-// selection has children) — so browsing never needs a breadcrumb: the
-// column headers either side of "current" show that context spatially.
-func (m Model) renderBody() string {
+// millerColumn is one column of the active tab's Miller-column layout, sized
+// and positioned within the content area — shared by renderBody (to lay the
+// columns out) and renderFilterRow (to align a filter box with whichever
+// column its screen occupies).
+type millerColumn struct {
+	screen *screen
+	width  int
+	offset int
+}
+
+// millerColumns lays out the active tab's current screen as up to three
+// columns — parent (one level up, if any) | current (where the cursor
+// lives) | preview (one level ahead, if the current selection has
+// children) — so browsing never needs a breadcrumb: the columns either
+// side of "current" show that context spatially. Returns nil for the
+// Queue tab, which isn't a browsing hierarchy and stays a single
+// full-width list (see renderBody).
+func (m Model) millerColumns(width int) []millerColumn {
 	stack := m.tabs[m.activeTab]
 	if len(stack) == 0 {
-		return "loading…"
+		return nil
 	}
-	cur := stack[len(stack)-1]
-	w, h := m.contentSize()
-
+	cur := &stack[len(stack)-1]
 	if cur.kind == screenQueue {
-		body := cur.list.View()
-		if m.showCoverArt {
-			if _, artW := queueSplit(w, h); artW > 0 {
-				gap := lipgloss.NewStyle().Width(queueArtGap).Height(h).Render("")
-				body = lipgloss.JoinHorizontal(lipgloss.Top, body, gap, m.renderQueueArt(artW, h))
-			}
-		}
-		return body
+		return nil
 	}
 
-	const gapWidth = 1
 	hasParent := len(stack) > 1
 	hasPreview := m.preview != nil
 
@@ -982,32 +1005,57 @@ func (m Model) renderBody() string {
 	if hasPreview {
 		n++
 	}
-	widths := splitMillerWidths(w-(n-1)*gapWidth, [3]bool{hasParent, true, hasPreview})
+	const gapWidth = 1
+	widths := splitMillerWidths(width-(n-1)*gapWidth, [3]bool{hasParent, true, hasPreview})
 
-	var cols []string
-	wi := 0
+	var cols []millerColumn
+	offset, wi := 0, 0
 	if hasParent {
-		lc := stack[len(stack)-2].list
-		lc.SetSize(widths[wi], h)
-		cols = append(cols, lc.View())
+		cols = append(cols, millerColumn{screen: &stack[len(stack)-2], width: widths[wi], offset: offset})
+		offset += widths[wi] + gapWidth
 		wi++
 	}
-	{
-		lc := cur.list
-		lc.SetSize(widths[wi], h)
-		cols = append(cols, lc.View())
-		wi++
-	}
+	cols = append(cols, millerColumn{screen: cur, width: widths[wi], offset: offset})
+	offset += widths[wi] + gapWidth
+	wi++
 	if hasPreview {
-		lc := m.preview.list
-		lc.SetSize(widths[wi], h)
-		cols = append(cols, lc.View())
+		cols = append(cols, millerColumn{screen: m.preview, width: widths[wi], offset: offset})
+	}
+	return cols
+}
+
+// renderBody draws the active tab's content: the Queue tab stays a single
+// full-width list (plus its own cover-art pane), everything else lays out
+// as millerColumns.
+func (m Model) renderBody() string {
+	stack := m.tabs[m.activeTab]
+	if len(stack) == 0 {
+		return "loading…"
+	}
+	w, h := m.contentSize()
+
+	if cur := stack[len(stack)-1]; cur.kind == screenQueue {
+		body := cur.list.View()
+		if m.showCoverArt {
+			if _, artW := queueSplit(w, h); artW > 0 {
+				gap := lipgloss.NewStyle().Width(queueArtGap).Height(h).Render("")
+				body = lipgloss.JoinHorizontal(lipgloss.Top, body, gap, m.renderQueueArt(artW, h))
+			}
+		}
+		return body
 	}
 
-	gap := lipgloss.NewStyle().Width(gapWidth).Height(h).Render("")
-	body := cols[0]
-	for _, c := range cols[1:] {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, body, gap, c)
+	cols := m.millerColumns(w)
+	gap := lipgloss.NewStyle().Width(1).Height(h).Render("")
+	body := ""
+	for i, c := range cols {
+		lc := c.screen.list
+		lc.SetSize(c.width, h)
+		if i == 0 {
+			body = lc.View()
+			continue
+		}
+		body = lipgloss.JoinHorizontal(lipgloss.Top, body, gap, lc.View())
 	}
 	return body
 }
