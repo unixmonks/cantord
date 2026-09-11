@@ -130,7 +130,7 @@ func (m *Model) currentScreen() *screen {
 	return &stack[len(stack)-1]
 }
 
-func (m *Model) footerHeight() int { return 3 } // border-top + 2 content lines
+func (m *Model) footerHeight() int { return 2 } // border-top + 1 content line
 
 // headerHeight is the tab bar's height when it's showing (a label row plus
 // its bottom border) plus one more row when the active screen is filtering

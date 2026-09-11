@@ -27,6 +27,10 @@ var (
 	footerStyle      lipgloss.Style
 	footerLabelStyle lipgloss.Style
 
+	playerTrackStyle     lipgloss.Style
+	playerBarFilledStyle lipgloss.Style
+	playerBarEmptyStyle  lipgloss.Style
+
 	tabBarStyle      lipgloss.Style
 	tabActiveStyle   lipgloss.Style
 	tabInactiveStyle lipgloss.Style
@@ -56,6 +60,10 @@ func buildStyles() {
 		Padding(0, 1)
 
 	footerLabelStyle = lipgloss.NewStyle().Foreground(subtle)
+
+	playerTrackStyle = lipgloss.NewStyle().Bold(true).Foreground(accent)
+	playerBarFilledStyle = lipgloss.NewStyle().Foreground(accent)
+	playerBarEmptyStyle = lipgloss.NewStyle().Foreground(subtle)
 
 	tabBarStyle = lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).

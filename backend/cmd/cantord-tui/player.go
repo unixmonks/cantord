@@ -204,6 +204,14 @@ func cmdRemoveFromPlaylist(c *Client, name, trackID string) tea.Cmd {
 
 // --- footer rendering ---
 
+// minTrackWidth/minBarWidth bound how far renderFooter will squeeze the
+// track title and progress bar before it just lets the line overflow —
+// below this a narrow terminal is going to clip something regardless.
+const (
+	minTrackWidth = 8
+	minBarWidth   = 6
+)
+
 func renderFooter(st Status, width int, connected bool) string {
 	conn := connectedStyle.Render("●")
 	if !connected {
@@ -224,8 +232,8 @@ func renderFooter(st Status, width int, connected bool) string {
 		if state == "" {
 			state = "idle"
 		}
-		line1 := lipglossJoin(fmt.Sprintf("%s %s", footerLabelStyle.Render("♪"), strings.ToUpper(state)), conn, inner)
-		return footerStyle.Width(width).Render(line1 + "\n")
+		line := lipglossJoin(footerLabelStyle.Render(fmt.Sprintf("♪ %s", strings.ToUpper(state))), conn, inner)
+		return footerStyle.Width(width).Render(line)
 	}
 
 	icon := "▶"
@@ -248,19 +256,31 @@ func renderFooter(st Status, width int, connected bool) string {
 		flags += " ✕"
 	}
 
-	// Size the bar to whatever room is left after the rest of the line, so
-	// the total always fits inner instead of guessing at a fixed budget.
-	suffix := fmt.Sprintf("  %s / %s   vol %.0f%%%s", pos, dur, st.Volume, flags)
-	barWidth := inner - 2 - lipgloss.Width(suffix)
-	if barWidth < 10 {
-		barWidth = 10
+	meta := fmt.Sprintf("%s / %s  vol %.0f%%%s", pos, dur, st.Volume, flags)
+	right := meta + "  " + conn
+
+	// Everything but the bar is fixed width; the bar gets whatever room is
+	// left, shrinking the track title first if the terminal is too narrow
+	// for all of it. progressBar wraps its interior in brackets, so the
+	// interior it's given is 2 columns less than the bar's total width.
+	barTotal := inner - lipgloss.Width(track) - lipgloss.Width(right) - 2
+	if barTotal < minBarWidth {
+		overflow := minBarWidth - barTotal
+		trackWidth := lipgloss.Width(track) - overflow
+		if trackWidth < minTrackWidth {
+			trackWidth = minTrackWidth
+		}
+		track = ansi.Truncate(track, trackWidth, "…")
+		barTotal = inner - lipgloss.Width(track) - lipgloss.Width(right) - 2
+		if barTotal < minBarWidth {
+			barTotal = minBarWidth
+		}
 	}
-	bar := progressBar(st.PositionMS, st.DurationMS, barWidth)
+	bar := progressBar(st.PositionMS, st.DurationMS, barTotal-2)
 
-	line1 := lipglossJoin(track, conn, inner)
-	line2 := bar + suffix
+	line := playerTrackStyle.Render(track) + " " + bar + " " + footerLabelStyle.Render(meta) + "  " + conn
 
-	return footerStyle.Width(width).Render(line1 + "\n" + line2)
+	return footerStyle.Width(width).Render(line)
 }
 
 func progressBar(posMS, durMS, width int) string {
@@ -274,7 +294,11 @@ func progressBar(posMS, durMS, width int) string {
 	if filled < 0 {
 		filled = 0
 	}
-	return "[" + strings.Repeat("█", filled) + strings.Repeat("░", width-filled) + "]"
+	bracket := footerLabelStyle
+	return bracket.Render("[") +
+		playerBarFilledStyle.Render(strings.Repeat("█", filled)) +
+		playerBarEmptyStyle.Render(strings.Repeat("░", width-filled)) +
+		bracket.Render("]")
 }
 
 // lipglossJoin pads `left` and right-aligns `right` within width, truncating
