@@ -28,10 +28,10 @@ export function ArtistsPage() {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h1 className="disp" style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+        <h1 className="disp" style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
           Artists
         </h1>
-        <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 4 }}>{artists.length} artists</div>
+        <div style={{ fontSize: 14, color: "var(--text-faint)", marginTop: 4 }}>{artists.length} artists</div>
       </div>
 
       {artists.length === 0 ? (
@@ -68,14 +68,14 @@ function ArtistEntry({ name, showLetter, onClick }: { name: string; showLetter: 
   return (
     <>
       {showLetter && (
-        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", padding: "14px 14px 6px" }}>{name[0]?.toUpperCase()}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", padding: "14px 14px 6px" }}>{name[0]?.toUpperCase()}</div>
       )}
       <div
         className="row-hover"
         onClick={onClick}
         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", cursor: "pointer" }}
       >
-        <span style={{ fontSize: 15, fontWeight: 500 }}>{name}</span>
+        <span style={{ fontSize: 17, fontWeight: 500 }}>{name}</span>
       </div>
     </>
   );

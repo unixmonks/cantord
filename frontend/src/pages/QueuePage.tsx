@@ -40,16 +40,16 @@ export function QueuePage() {
     <div>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 24, gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h1 className="disp" style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+          <h1 className="disp" style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
             Queue
           </h1>
-          <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 4 }}>
+          <div style={{ fontSize: 14, color: "var(--text-faint)", marginTop: 4 }}>
             {queue.length} track{queue.length === 1 ? "" : "s"}
             {totalMs ? ` · ${formatDurationLong(totalMs)}` : ""}
           </div>
         </div>
         <button className="btn" disabled={queue.length === 0} onClick={clearQueue}>
-          <IconTrash size={14} /> Clear queue
+          <IconTrash size={16} /> Clear queue
         </button>
       </div>
 
@@ -81,7 +81,7 @@ export function QueuePage() {
               />
             ))}
           </div>
-          <div style={{ marginTop: 28, padding: "16px 18px", border: "1px dashed var(--border)", borderRadius: 10, fontSize: 12, color: "var(--text-faint)" }}>
+          <div style={{ marginTop: 28, padding: "16px 18px", border: "1px dashed var(--border)", borderRadius: 10, fontSize: 13, color: "var(--text-faint)" }}>
             Drag the grip to reorder · click a row to jump playback there · trash removes it from the queue
           </div>
         </>

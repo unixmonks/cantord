@@ -62,22 +62,22 @@ export function AlbumDetailPage() {
   return (
     <div>
       <div
-        style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-faint)", fontSize: 13, marginBottom: 24, cursor: "pointer" }}
+        style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-faint)", fontSize: 14, marginBottom: 24, cursor: "pointer" }}
         onClick={goBack}
       >
-        <IconBack size={14} /> Back
+        <IconBack size={16} /> Back
       </div>
 
       <div className="detail-hero" style={{ display: "flex", gap: 28, marginBottom: 32 }}>
         <AlbumArt artHash={album.art_hash} seed={album.id} label={album.name} size={180} radius={10} />
         <div className="detail-hero-info" style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-          <div style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+          <div style={{ fontSize: 13, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
             Album
           </div>
-          <h1 className="disp detail-hero-title" style={{ margin: "0 0 8px", fontSize: 36, fontWeight: 700 }}>
+          <h1 className="disp detail-hero-title" style={{ margin: "0 0 8px", fontSize: 40, fontWeight: 700 }}>
             {album.name}
           </h1>
-          <div style={{ fontSize: 15, color: "var(--text-dim)", marginBottom: 4 }}>
+          <div style={{ fontSize: 17, color: "var(--text-dim)", marginBottom: 4 }}>
             <span
               className="meta-link"
               style={{ cursor: "pointer" }}
@@ -87,15 +87,15 @@ export function AlbumDetailPage() {
             </span>
             {album.year ? ` · ${album.year}` : ""}
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 20 }}>
+          <div style={{ fontSize: 14, color: "var(--text-faint)", marginBottom: 20 }}>
             {tracks.length} tracks · {formatDurationLong(totalMs)}
           </div>
           <div className="detail-hero-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button className="btn btn-primary" disabled={busy} onClick={() => enqueueAll(true)}>
-              <IconPlay size={13} /> Play album
+              <IconPlay size={15} /> Play album
             </button>
             <button className="btn" disabled={busy} onClick={() => enqueueAll(false)}>
-              <IconPlus size={14} /> Add to queue
+              <IconPlus size={16} /> Add to queue
             </button>
             <AddToPlaylistMenu variant="button" trackIds={tracks.map((t) => t.id)} disabled={busy || tracks.length === 0} />
           </div>
@@ -109,7 +109,7 @@ export function AlbumDetailPage() {
             alignItems: "center",
             gap: 14,
             padding: "8px 10px",
-            fontSize: 11,
+            fontSize: 12,
             color: "var(--text-faint)",
             textTransform: "uppercase",
             letterSpacing: "0.06em",

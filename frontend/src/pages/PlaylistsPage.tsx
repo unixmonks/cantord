@@ -68,10 +68,10 @@ export function PlaylistsPage() {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h1 className="disp" style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+        <h1 className="disp" style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
           Playlists
         </h1>
-        <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 4 }}>
+        <div style={{ fontSize: 14, color: "var(--text-faint)", marginTop: 4 }}>
           {playlists.length} saved playlist{playlists.length === 1 ? "" : "s"}
         </div>
       </div>
@@ -89,13 +89,13 @@ export function PlaylistsPage() {
           marginBottom: 36,
         }}
       >
-        <IconPlaylist size={16} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+        <IconPlaylist size={18} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && saveQueueAsPlaylist()}
           placeholder="Save current queue as playlist…"
-          style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--text)", fontSize: 14 }}
+          style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--text)", fontSize: 16 }}
         />
         <button className="btn btn-primary" disabled={saving || !newName.trim()} onClick={saveQueueAsPlaylist}>
           Save
@@ -126,10 +126,10 @@ export function PlaylistsPage() {
                   color: "var(--text-dim)",
                 }}
               >
-                <IconPlaylist size={20} />
+                <IconPlaylist size={22} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                <div style={{ fontSize: 17, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
               </div>
               <button
                 className="iconbtn"
@@ -139,7 +139,7 @@ export function PlaylistsPage() {
                 }}
                 title="Play all"
               >
-                <IconPlay size={16} />
+                <IconPlay size={18} />
               </button>
               <button
                 className="iconbtn"
@@ -149,7 +149,7 @@ export function PlaylistsPage() {
                 }}
                 title="Delete playlist"
               >
-                <IconTrash size={16} />
+                <IconTrash size={18} />
               </button>
             </div>
           ))}

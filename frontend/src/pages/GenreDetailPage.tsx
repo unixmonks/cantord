@@ -44,17 +44,17 @@ export function GenreDetailPage() {
   return (
     <div>
       <div
-        style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-faint)", fontSize: 13, marginBottom: 24, cursor: "pointer" }}
+        style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-faint)", fontSize: 14, marginBottom: 24, cursor: "pointer" }}
         onClick={goBack}
       >
-        <IconBack size={14} /> Back
+        <IconBack size={16} /> Back
       </div>
 
       <div style={{ marginBottom: 24 }}>
-        <h1 className="disp" style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+        <h1 className="disp" style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
           {genre}
         </h1>
-        <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 4 }}>{tracks.length} tracks</div>
+        <div style={{ fontSize: 14, color: "var(--text-faint)", marginTop: 4 }}>{tracks.length} tracks</div>
       </div>
 
       {loading && <div className="empty-state">Loading…</div>}
@@ -75,7 +75,7 @@ export function GenreDetailPage() {
                     onClick={() => navigate(`/artists/${encodeURIComponent(name)}`)}
                     style={{ display: "flex", alignItems: "center", padding: "12px 14px", cursor: "pointer" }}
                   >
-                    <span style={{ fontSize: 15, fontWeight: 500 }}>{name}</span>
+                    <span style={{ fontSize: 17, fontWeight: 500 }}>{name}</span>
                   </div>
                 ))}
               </div>
@@ -97,10 +97,10 @@ export function GenreDetailPage() {
                   >
                     <AlbumArt artHash={t.art_hash} seed={t.album_id} label={t.album} size={52} />
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div style={{ fontSize: 16, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         {t.album}
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+                      <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
                         {t.album_artist}
                         {t.year ? ` · ${t.year}` : ""}
                       </div>

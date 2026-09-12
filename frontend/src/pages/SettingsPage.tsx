@@ -40,7 +40,7 @@ export function SettingsPage() {
   return (
     <div>
       <div style={{ marginBottom: 28 }}>
-        <h1 className="disp" style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+        <h1 className="disp" style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
           Settings
         </h1>
       </div>
@@ -48,18 +48,18 @@ export function SettingsPage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 760 }}>
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, gap: 12, flexWrap: "wrap" }}>
-            <h2 className="disp" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
+            <h2 className="disp" style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
               Connection
             </h2>
             <div
-              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: connected ? "var(--good)" : "var(--danger)" }}
+              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: connected ? "var(--good)" : "var(--danger)" }}
             >
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: connected ? "var(--good)" : "var(--danger)" }} />
               {connected ? "Connected" : "Disconnected"}
               {version && connected ? ` · v${version}` : ""}
             </div>
           </div>
-          <label style={{ fontSize: 12, color: "var(--text-faint)", display: "block", marginBottom: 6 }}>
+          <label style={{ fontSize: 13, color: "var(--text-faint)", display: "block", marginBottom: 6 }}>
             Server address (CANTORD_ADDR)
           </label>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -79,21 +79,21 @@ export function SettingsPage() {
 
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, gap: 12, flexWrap: "wrap" }}>
-            <h2 className="disp" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
+            <h2 className="disp" style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
               Library scan
             </h2>
             <button className="btn btn-primary" disabled={scanning || scanProgress?.running} onClick={scanNow}>
-              <IconRefresh size={13} /> Scan library
+              <IconRefresh size={15} /> Scan library
             </button>
           </div>
 
           {scanProgress?.running ? (
             <>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+                <span style={{ fontSize: 14, color: "var(--text-dim)" }}>
                   Scanning — {scanProgress.processed.toLocaleString()} / {scanProgress.total.toLocaleString()}
                 </span>
-                <span style={{ fontSize: 13, color: "var(--text-dim)" }}>{pct}%</span>
+                <span style={{ fontSize: 14, color: "var(--text-dim)" }}>{pct}%</span>
               </div>
               <div style={{ height: 6, background: "var(--bg-elev-2)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
                 <div style={{ height: "100%", width: `${pct}%`, background: "var(--accent)", borderRadius: 3 }} />
@@ -101,7 +101,7 @@ export function SettingsPage() {
               {scanProgress.current_path && (
                 <div
                   style={{
-                    fontSize: 12,
+                    fontSize: 13,
                     color: "var(--text-faint)",
                     fontFamily: "monospace",
                     whiteSpace: "nowrap",
@@ -115,7 +115,7 @@ export function SettingsPage() {
               )}
             </>
           ) : (
-            <div style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 24 }}>
+            <div style={{ fontSize: 14, color: "var(--text-faint)", marginBottom: 24 }}>
               {scanProgress ? "Idle — library is up to date." : "Scan status unavailable."}
             </div>
           )}
@@ -134,7 +134,7 @@ export function SettingsPage() {
 
         {stats && (
           <div className="card">
-            <h2 className="disp" style={{ margin: "0 0 18px", fontSize: 16, fontWeight: 600 }}>
+            <h2 className="disp" style={{ margin: "0 0 18px", fontSize: 18, fontWeight: 600 }}>
               Library
             </h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 20 }}>
@@ -143,7 +143,7 @@ export function SettingsPage() {
               <Stat label="Artists" value={stats.artists} />
               <Stat label="Unavailable" value={stats.unavailable} color={stats.unavailable > 0 ? "var(--danger)" : undefined} />
             </div>
-            <div style={{ display: "flex", gap: 24, marginTop: 20, paddingTop: 20, borderTop: "1px solid var(--border)", fontSize: 13, color: "var(--text-dim)", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 24, marginTop: 20, paddingTop: 20, borderTop: "1px solid var(--border)", fontSize: 14, color: "var(--text-dim)", flexWrap: "wrap" }}>
               <span>{formatBytes(stats.total_size_bytes)} on disk</span>
               <span>{formatDurationLong(stats.total_duration_ms)} of music</span>
             </div>
@@ -157,7 +157,7 @@ export function SettingsPage() {
 function Stat({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div className="disp" style={{ fontSize: 22, fontWeight: 600, color: color ?? "var(--text)" }}>
+      <div className="disp" style={{ fontSize: 24, fontWeight: 600, color: color ?? "var(--text)" }}>
         {(value ?? 0).toLocaleString()}
       </div>
       <div className="section-label">{label}</div>

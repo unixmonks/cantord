@@ -72,11 +72,11 @@ export function AddToPlaylistMenu({ trackIds, variant = "icon", label = "Add to 
     <div ref={rootRef} style={{ position: "relative", flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
       {variant === "icon" ? (
         <button className="iconbtn" disabled={disabled} onClick={() => setOpen((v) => !v)} title={label}>
-          <IconPlaylist size={15} />
+          <IconPlaylist size={17} />
         </button>
       ) : (
         <button className="btn" disabled={disabled} onClick={() => setOpen((v) => !v)}>
-          <IconPlaylist size={14} /> {label}
+          <IconPlaylist size={16} /> {label}
         </button>
       )}
 
@@ -98,10 +98,10 @@ export function AddToPlaylistMenu({ trackIds, variant = "icon", label = "Add to 
             padding: 6,
           }}
         >
-          {playlists === null && <div style={{ padding: "10px 12px", fontSize: 13, color: "var(--text-faint)" }}>Loading…</div>}
+          {playlists === null && <div style={{ padding: "10px 12px", fontSize: 14, color: "var(--text-faint)" }}>Loading…</div>}
 
           {playlists?.length === 0 && !creating && (
-            <div style={{ padding: "10px 12px", fontSize: 13, color: "var(--text-faint)" }}>No playlists yet.</div>
+            <div style={{ padding: "10px 12px", fontSize: 14, color: "var(--text-faint)" }}>No playlists yet.</div>
           )}
 
           {playlists?.map((name) => (
@@ -116,7 +116,7 @@ export function AddToPlaylistMenu({ trackIds, variant = "icon", label = "Add to 
                 alignItems: "center",
                 gap: 8,
                 padding: "9px 10px",
-                fontSize: 13.5,
+                fontSize: 14.5,
                 color: "var(--text)",
                 background: "none",
                 border: "none",
@@ -142,10 +142,10 @@ export function AddToPlaylistMenu({ trackIds, variant = "icon", label = "Add to 
                   onKeyDown={(e) => e.key === "Enter" && createAndAdd()}
                   placeholder="Playlist name…"
                   className="field"
-                  style={{ flex: 1, fontSize: 13, padding: "6px 8px" }}
+                  style={{ flex: 1, fontSize: 14, padding: "6px 8px" }}
                 />
                 <button className="iconbtn" disabled={busy || !newName.trim()} onClick={createAndAdd} title="Create">
-                  <IconCheck size={14} />
+                  <IconCheck size={16} />
                 </button>
               </div>
             ) : (
@@ -158,7 +158,7 @@ export function AddToPlaylistMenu({ trackIds, variant = "icon", label = "Add to 
                   alignItems: "center",
                   gap: 8,
                   padding: "9px 10px",
-                  fontSize: 13.5,
+                  fontSize: 14.5,
                   color: "var(--text-dim)",
                   background: "none",
                   border: "none",
@@ -167,7 +167,7 @@ export function AddToPlaylistMenu({ trackIds, variant = "icon", label = "Add to 
                   textAlign: "left",
                 }}
               >
-                <IconPlus size={13} /> New playlist
+                <IconPlus size={15} /> New playlist
               </button>
             )}
           </div>

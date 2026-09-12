@@ -6,6 +6,8 @@ import { Slider } from "./Slider";
 import { formatDuration } from "../utils/format";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import {
+  IconHeart,
+  IconHeartFilled,
   IconNext,
   IconPause,
   IconPlay,
@@ -19,7 +21,7 @@ import {
 } from "./Icons";
 
 export function PlayerBar() {
-  const { status, togglePlayPause, stop, next, previous, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat } =
+  const { api, status, showToast, togglePlayPause, stop, next, previous, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat } =
     usePlayer();
   const navigate = useNavigate();
   const isNarrow = useMediaQuery("(max-width: 720px)");
@@ -32,6 +34,27 @@ export function PlayerBar() {
   useEffect(() => {
     setLocalPos(status?.position_ms ?? 0);
   }, [status?.position_ms, status?.track?.id]);
+
+  // The engine's status snapshot doesn't get a fresh `favorite` flag pushed
+  // to it when it changes elsewhere, so track our own optimistic override
+  // for the currently playing track rather than relying on status.track.
+  const [favOverride, setFavOverride] = useState<{ id: string; value: boolean } | null>(null);
+  useEffect(() => {
+    setFavOverride(null);
+  }, [track?.id]);
+  const isFavorite = track ? (favOverride?.id === track.id ? favOverride.value : track.favorite) : false;
+
+  async function toggleFavorite() {
+    if (!track) return;
+    const nextValue = !isFavorite;
+    setFavOverride({ id: track.id, value: nextValue });
+    try {
+      await api.setFavorite(track.id, nextValue);
+    } catch (err) {
+      setFavOverride({ id: track.id, value: !nextValue });
+      showToast(err instanceof Error ? err.message : "Couldn't update favorite");
+    }
+  }
 
   useEffect(() => {
     if (status?.state !== "playing" || !duration) return;
@@ -92,11 +115,11 @@ export function PlayerBar() {
           size={isTiny ? 40 : 52}
         />
         <div style={{ minWidth: 0 }}>
-          <div className="disp" style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div className="disp" style={{ fontSize: 16, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {track.title}
           </div>
           {!isTiny && (
-          <div style={{ fontSize: 12, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div style={{ fontSize: 13, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {track.artist && (
               <span
                 className="meta-link"
@@ -123,6 +146,16 @@ export function PlayerBar() {
         </div>
       </div>
 
+      {!isTiny && (
+        <button
+          className={`iconbtn${isFavorite ? " active" : ""}`}
+          onClick={toggleFavorite}
+          title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+        >
+          {isFavorite ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
+        </button>
+      )}
+
       <div className="player-controls" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, maxWidth: 640, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: isTiny ? 8 : 18 }}>
           {!isTiny && (
@@ -131,11 +164,11 @@ export function PlayerBar() {
               onClick={toggleShuffle}
               title="Shuffle remaining queue"
             >
-              <IconShuffle size={16} />
+              <IconShuffle size={18} />
             </button>
           )}
           <button className="iconbtn" onClick={previous} title="Previous">
-            <IconPrev size={18} />
+            <IconPrev size={20} />
           </button>
           <button
             onClick={togglePlayPause}
@@ -153,14 +186,14 @@ export function PlayerBar() {
               cursor: "pointer",
             }}
           >
-            {status?.state === "playing" ? <IconPause size={15} /> : <IconPlay size={15} />}
+            {status?.state === "playing" ? <IconPause size={17} /> : <IconPlay size={17} />}
           </button>
           <button className="iconbtn" onClick={next} title="Next">
-            <IconNext size={18} />
+            <IconNext size={20} />
           </button>
           {!isTiny && (
             <button className="iconbtn" onClick={stop} title="Stop">
-              <IconStop size={15} />
+              <IconStop size={17} />
             </button>
           )}
           <button
@@ -168,12 +201,12 @@ export function PlayerBar() {
             onClick={cycleRepeat}
             title={`Repeat: ${status?.repeat ?? "off"}`}
           >
-            {status?.repeat === "one" ? <IconRepeatOne size={16} /> : <IconRepeat size={16} />}
+            {status?.repeat === "one" ? <IconRepeatOne size={18} /> : <IconRepeat size={18} />}
           </button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
           {!isTiny && (
-            <span style={{ fontSize: 11, color: "var(--text-faint)", width: 32, textAlign: "right" }}>
+            <span style={{ fontSize: 12, color: "var(--text-faint)", width: 32, textAlign: "right" }}>
               {formatDuration(dragPos !== null ? dragPos * duration : localPos)}
             </span>
           )}
@@ -185,7 +218,7 @@ export function PlayerBar() {
               if (duration > 0) seek((r * duration) / 1000);
             }}
           />
-          {!isTiny && <span style={{ fontSize: 11, color: "var(--text-faint)", width: 32 }}>{formatDuration(duration)}</span>}
+          {!isTiny && <span style={{ fontSize: 12, color: "var(--text-faint)", width: 32 }}>{formatDuration(duration)}</span>}
         </div>
       </div>
 
@@ -194,7 +227,7 @@ export function PlayerBar() {
         style={{ display: isNarrow ? "none" : "flex", alignItems: "center", gap: 10, width: 160, flexShrink: 0, justifyContent: "flex-end" }}
       >
         <button className="iconbtn" onClick={toggleMute} title={status?.muted ? "Unmute" : "Mute"}>
-          {status?.muted ? <IconVolumeMuted size={17} /> : <IconVolume size={17} />}
+          {status?.muted ? <IconVolumeMuted size={19} /> : <IconVolume size={19} />}
         </button>
         <div style={{ width: 88 }}>
           <Slider

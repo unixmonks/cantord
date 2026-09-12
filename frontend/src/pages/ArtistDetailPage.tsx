@@ -45,17 +45,17 @@ export function ArtistDetailPage() {
   return (
     <div>
       <div
-        style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-faint)", fontSize: 13, marginBottom: 24, cursor: "pointer" }}
+        style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-faint)", fontSize: 14, marginBottom: 24, cursor: "pointer" }}
         onClick={goBack}
       >
-        <IconBack size={14} /> Back
+        <IconBack size={16} /> Back
       </div>
 
       <div style={{ marginBottom: 24 }}>
-        <h1 className="disp" style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+        <h1 className="disp" style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
           {name}
         </h1>
-        <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 4 }}>
+        <div style={{ fontSize: 14, color: "var(--text-faint)", marginTop: 4 }}>
           {albums ? `${albums.length} album${albums.length === 1 ? "" : "s"}` : "Loading…"}
         </div>
       </div>
@@ -67,10 +67,10 @@ export function ArtistDetailPage() {
           <div key={album.id} onClick={() => navigate(`/albums/${album.id}`)} style={{ cursor: "pointer" }}>
             <AlbumArt artHash={album.art_hash} seed={album.id} label={album.name} size="fill" radius={8} />
             <div style={{ marginTop: 10 }}>
-              <div className="disp" style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div className="disp" style={{ fontSize: 16, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {album.name}
               </div>
-              <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{album.year || ""}</div>
+              <div style={{ fontSize: 12, color: "var(--text-faint)" }}>{album.year || ""}</div>
             </div>
           </div>
         ))}

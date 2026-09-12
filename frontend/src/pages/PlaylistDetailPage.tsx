@@ -121,15 +121,15 @@ export function PlaylistDetailPage() {
   return (
     <div>
       <div
-        style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-faint)", fontSize: 13, marginBottom: 24, cursor: "pointer" }}
+        style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-faint)", fontSize: 14, marginBottom: 24, cursor: "pointer" }}
         onClick={goBack}
       >
-        <IconBack size={14} /> Back
+        <IconBack size={16} /> Back
       </div>
 
       <div className="detail-hero-row" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 32, gap: 16 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+          <div style={{ fontSize: 13, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
             Playlist
           </div>
           {editingName ? (
@@ -140,32 +140,32 @@ export function PlaylistDetailPage() {
               onBlur={commitRename}
               onKeyDown={(e) => e.key === "Enter" && commitRename()}
               className="field"
-              style={{ fontSize: 28, fontWeight: 700, padding: "2px 8px", marginBottom: 10, width: 360, maxWidth: "100%" }}
+              style={{ fontSize: 32, fontWeight: 700, padding: "2px 8px", marginBottom: 10, width: 360, maxWidth: "100%" }}
             />
           ) : (
             <h1
               className="disp detail-hero-title"
-              style={{ margin: "0 0 10px", fontSize: 32, fontWeight: 700, cursor: "text" }}
+              style={{ margin: "0 0 10px", fontSize: 36, fontWeight: 700, cursor: "text" }}
               onClick={() => setEditingName(true)}
               title="Click to rename"
             >
               {name}
             </h1>
           )}
-          <div style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 20 }}>
+          <div style={{ fontSize: 14, color: "var(--text-faint)", marginBottom: 20 }}>
             {tracks.length} tracks{totalMs ? ` · ${formatDurationLong(totalMs)}` : ""}
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button className="btn btn-primary" disabled={tracks.length === 0} onClick={playAll}>
-              <IconPlay size={13} /> Play all
+              <IconPlay size={15} /> Play all
             </button>
             <button className="btn" disabled={tracks.length === 0} onClick={addAllToQueue}>
-              <IconPlus size={14} /> Add all to queue
+              <IconPlus size={16} /> Add all to queue
             </button>
           </div>
         </div>
         <button className="btn btn-danger" style={{ flexShrink: 0 }} onClick={deletePlaylist}>
-          <IconTrash size={14} /> Delete playlist
+          <IconTrash size={16} /> Delete playlist
         </button>
       </div>
 

@@ -83,10 +83,10 @@ export function AlbumsPage() {
     <div style={{ display: "flex", gap: 8 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ marginBottom: 24 }}>
-          <h1 className="disp" style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+          <h1 className="disp" style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
             Albums
           </h1>
-          <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 4 }}>
+          <div style={{ fontSize: 14, color: "var(--text-faint)", marginTop: 4 }}>
             {albums.length} loaded{hasMore ? "" : " · all albums"}
           </div>
         </div>
@@ -102,13 +102,13 @@ export function AlbumsPage() {
             >
               <AlbumArt artHash={album.art_hash} seed={album.id} label={album.name} size="fill" radius={8} />
               <div style={{ marginTop: 10 }}>
-                <div className="disp" style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div className="disp" style={{ fontSize: 16, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {album.name}
                 </div>
-                <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ fontSize: 13, color: "var(--text-dim)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {album.album_artist}
                 </div>
-                <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{album.year || ""}</div>
+                <div style={{ fontSize: 12, color: "var(--text-faint)" }}>{album.year || ""}</div>
               </div>
             </div>
           ))}
@@ -116,7 +116,7 @@ export function AlbumsPage() {
 
         {hasMore && (
           <div ref={sentinelRef} style={{ display: "flex", justifyContent: "center", marginTop: 36, minHeight: 1 }}>
-            {loading && <span style={{ fontSize: 13, color: "var(--text-faint)" }}>Loading…</span>}
+            {loading && <span style={{ fontSize: 14, color: "var(--text-faint)" }}>Loading…</span>}
           </div>
         )}
       </div>
@@ -147,7 +147,7 @@ export function AlbumsPage() {
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 700,
                   padding: "3px 0",
                   width: 24,

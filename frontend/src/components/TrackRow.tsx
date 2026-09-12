@@ -105,11 +105,11 @@ export function TrackRow({
     >
       {draggable && (
         <span style={{ color: "var(--text-faint)", cursor: "grab" }}>
-          <IconGrip size={14} />
+          <IconGrip size={16} />
         </span>
       )}
       {index !== undefined && (
-        <div style={{ width: 20, textAlign: "center", fontSize: 13, color: isPlaying ? "var(--accent)" : "var(--text-faint)", flexShrink: 0 }}>
+        <div style={{ width: 20, textAlign: "center", fontSize: 14, color: isPlaying ? "var(--accent)" : "var(--text-faint)", flexShrink: 0 }}>
           {isPlaying ? <EqGlyph paused={isPaused} /> : index}
         </div>
       )}
@@ -117,7 +117,7 @@ export function TrackRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontSize: 14,
+            fontSize: 16,
             fontWeight: 600,
             color: isPlaying ? "var(--accent)" : "var(--text)",
             whiteSpace: "nowrap",
@@ -128,7 +128,7 @@ export function TrackRow({
           {track.title || "Untitled"}
         </div>
         {showAlbum && (
-          <div style={{ fontSize: 12, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div style={{ fontSize: 13, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {track.artist && (
               <span
                 className="meta-link"
@@ -174,13 +174,13 @@ export function TrackRow({
               onClick={() => rate(n)}
               title={`Rate ${n}`}
             >
-              {n <= track.rating ? <IconStarFilled size={12} /> : <IconStar size={12} />}
+              {n <= track.rating ? <IconStarFilled size={14} /> : <IconStar size={14} />}
             </button>
           ))}
         </div>
       )}
 
-      <div style={{ fontSize: 12, color: "var(--text-faint)", width: 44, textAlign: "right", flexShrink: 0 }}>
+      <div style={{ fontSize: 13, color: "var(--text-faint)", width: 44, textAlign: "right", flexShrink: 0 }}>
         {formatDuration(track.duration_ms)}
       </div>
 
@@ -191,18 +191,18 @@ export function TrackRow({
           onClick={toggleFavorite}
           title={track.favorite ? "Remove from favorites" : "Add to favorites"}
         >
-          {track.favorite ? <IconHeartFilled size={15} /> : <IconHeart size={15} />}
+          {track.favorite ? <IconHeartFilled size={17} /> : <IconHeart size={17} />}
         </button>
         {!hideAdd && (
           <button className="iconbtn" onClick={() => enqueue(track.id)} title="Add to queue">
-            <IconPlus size={15} />
+            <IconPlus size={17} />
           </button>
         )}
         <AddToPlaylistMenu trackIds={[track.id]} />
         {extraActions}
         {onRemove && (
           <button className="iconbtn" onClick={onRemove} title="Remove">
-            <IconTrash size={15} />
+            <IconTrash size={17} />
           </button>
         )}
       </div>

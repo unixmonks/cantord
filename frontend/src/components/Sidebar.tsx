@@ -107,7 +107,7 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
         }}
       >
         {!collapsed && (
-          <div className="disp" style={{ fontSize: 20, fontWeight: 700, letterSpacing: "0.01em", padding: "0 10px", whiteSpace: "nowrap" }}>
+          <div className="disp" style={{ fontSize: 22, fontWeight: 700, letterSpacing: "0.01em", padding: "0 10px", whiteSpace: "nowrap" }}>
             cantord
           </div>
         )}
@@ -118,9 +118,9 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
           style={{ flexShrink: 0 }}
         >
           {isMobile ? (
-            <IconClose size={16} />
+            <IconClose size={18} />
           ) : (
-            <IconChevronLeft size={16} style={{ transform: collapsed ? "rotate(180deg)" : "none", transition: "transform 0.15s ease" }} />
+            <IconChevronLeft size={18} style={{ transform: collapsed ? "rotate(180deg)" : "none", transition: "transform 0.15s ease" }} />
           )}
         </button>
       </div>
@@ -144,8 +144,8 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
                 color: isActive ? "var(--text)" : "var(--text-dim)",
               }}
             >
-              <Icon size={18} style={{ flexShrink: 0 }} />
-              {!collapsed && <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>{label}</span>}
+              <Icon size={20} style={{ flexShrink: 0 }} />
+              {!collapsed && <span style={{ fontSize: 16, fontWeight: 600, whiteSpace: "nowrap" }}>{label}</span>}
             </Link>
           );
         })}
@@ -170,8 +170,8 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
             font: "inherit",
           }}
         >
-          <IconSparkle size={18} style={{ flexShrink: 0 }} />
-          {!collapsed && <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>Assistant</span>}
+          <IconSparkle size={20} style={{ flexShrink: 0 }} />
+          {!collapsed && <span style={{ fontSize: 16, fontWeight: 600, whiteSpace: "nowrap" }}>Assistant</span>}
         </button>
       </nav>
       <div style={{ flex: 1 }} />
@@ -183,12 +183,12 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
             justifyContent: collapsed ? "center" : "flex-start",
             gap: 8,
             padding: collapsed ? "10px" : "10px 12px",
-            fontSize: 12,
+            fontSize: 13,
             color: "var(--danger)",
           }}
           title="Not connected to cantord"
         >
-          <IconWifiOff size={14} style={{ flexShrink: 0 }} />
+          <IconWifiOff size={16} style={{ flexShrink: 0 }} />
           {!collapsed && <span style={{ whiteSpace: "nowrap" }}>Disconnected</span>}
         </div>
       )}

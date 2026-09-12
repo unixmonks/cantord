@@ -41,7 +41,7 @@ export function HomePage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
       <div>
-        <h1 className="disp" style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+        <h1 className="disp" style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
           Home
         </h1>
       </div>
@@ -49,8 +49,8 @@ export function HomePage() {
       {suggestions.length > 0 && (
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-dim)", marginBottom: 12 }}>
-            <IconSparkle size={14} />
-            <h2 className="disp" style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
+            <IconSparkle size={16} />
+            <h2 className="disp" style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--text)" }}>
               AI Suggestions
             </h2>
           </div>
@@ -60,9 +60,9 @@ export function HomePage() {
                 key={sug.label}
                 className="btn"
                 onClick={() => runAiPrompt(sug.prompt)}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 13 }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 14 }}
               >
-                <IconSparkle size={13} style={{ color: "var(--accent)" }} />
+                <IconSparkle size={15} style={{ color: "var(--accent)" }} />
                 {sug.label}
               </button>
             ))}
@@ -72,7 +72,7 @@ export function HomePage() {
 
       <Section
         title="Recently Added"
-        icon={<IconClock size={14} />}
+        icon={<IconClock size={16} />}
         onSeeAll={() => navigate("/recent")}
         empty="Nothing has been added yet."
         tracks={recent}
@@ -80,7 +80,7 @@ export function HomePage() {
       />
       <Section
         title="Recently Played"
-        icon={<IconClock size={14} />}
+        icon={<IconClock size={16} />}
         onSeeAll={() => navigate("/recently-played")}
         empty="Nothing has been played yet."
         tracks={played}
@@ -88,7 +88,7 @@ export function HomePage() {
       />
       <Section
         title="Favorites"
-        icon={<IconHeartFilled size={14} />}
+        icon={<IconHeartFilled size={16} />}
         onSeeAll={() => navigate("/favorites")}
         empty="Tap the heart on any track to favorite it."
         tracks={favorites}
@@ -118,12 +118,12 @@ function Section({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-dim)" }}>
           {icon}
-          <h2 className="disp" style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
+          <h2 className="disp" style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--text)" }}>
             {title}
           </h2>
         </div>
         {tracks.length > 0 && (
-          <button className="btn" onClick={onSeeAll} style={{ padding: "6px 12px", fontSize: 12 }}>
+          <button className="btn" onClick={onSeeAll} style={{ padding: "6px 12px", fontSize: 13 }}>
             See all
           </button>
         )}

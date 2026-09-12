@@ -57,7 +57,7 @@ export function Layout() {
     <div className="app-shell">
       <div className="app-topbar">
         <button className="iconbtn" onClick={() => setMobileNavOpen(true)} title="Open menu">
-          <IconMenu size={20} />
+          <IconMenu size={22} />
         </button>
         <span className="disp app-topbar-title">cantord</span>
       </div>

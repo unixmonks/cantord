@@ -166,25 +166,25 @@ export function AiPanel() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <IconSparkle size={18} style={{ color: "var(--accent)" }} />
-          <span className="disp" style={{ fontSize: 15, fontWeight: 700 }}>
+          <IconSparkle size={20} style={{ color: "var(--accent)" }} />
+          <span className="disp" style={{ fontSize: 17, fontWeight: 700 }}>
             Assistant
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           {items.length > 0 && (
-            <button className="iconbtn" onClick={newChat} title="New chat" style={{ fontSize: 12, padding: "4px 8px", width: "auto" }}>
+            <button className="iconbtn" onClick={newChat} title="New chat" style={{ fontSize: 13, padding: "4px 8px", width: "auto" }}>
               New
             </button>
           )}
           <button className="iconbtn" onClick={toggleAiPanel} title="Close">
-            <IconClose size={16} />
+            <IconClose size={18} />
           </button>
         </div>
       </div>
 
       {status && !status.configured ? (
-        <div style={{ padding: 20, color: "var(--text-dim)", fontSize: 13, lineHeight: 1.6 }}>
+        <div style={{ padding: 20, color: "var(--text-dim)", fontSize: 14, lineHeight: 1.6 }}>
           The assistant isn't configured yet. Set <code>CANTORD_AI_API_KEY</code> to an Anthropic API key
           and restart cantord to enable it.
         </div>
@@ -192,7 +192,7 @@ export function AiPanel() {
         <>
           <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
             {items.length === 0 && (
-              <div style={{ color: "var(--text-faint)", fontSize: 13, lineHeight: 1.6 }}>
+              <div style={{ color: "var(--text-faint)", fontSize: 14, lineHeight: 1.6 }}>
                 Try "play me 90s grunge hits" or "make a playlist of chill Sunday morning music".
               </div>
             )}
@@ -218,7 +218,7 @@ export function AiPanel() {
                 borderRadius: 8,
                 padding: "9px 12px",
                 color: "var(--text)",
-                fontSize: 13,
+                fontSize: 14,
               }}
             />
             <button
@@ -228,7 +228,7 @@ export function AiPanel() {
               title="Send"
               style={{ opacity: sending || !input.trim() ? 0.4 : 1 }}
             >
-              <IconSend size={16} />
+              <IconSend size={18} />
             </button>
           </form>
         </>
@@ -248,7 +248,7 @@ function ChatItemView({ item }: { item: ChatItem }) {
           color: "var(--accent-ink)",
           borderRadius: 10,
           padding: "8px 12px",
-          fontSize: 13,
+          fontSize: 14,
           lineHeight: 1.5,
         }}
       >
@@ -267,7 +267,7 @@ function ChatItemView({ item }: { item: ChatItem }) {
           background: "var(--bg-elev-2)",
           borderRadius: 10,
           padding: "8px 12px",
-          fontSize: 13,
+          fontSize: 14,
           lineHeight: 1.5,
           whiteSpace: "pre-wrap",
         }}
@@ -280,7 +280,7 @@ function ChatItemView({ item }: { item: ChatItem }) {
   // tool item
   if (LOOKUP_TOOLS.has(item.name)) {
     return (
-      <div style={{ alignSelf: "flex-start", fontSize: 12, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ alignSelf: "flex-start", fontSize: 13, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 6 }}>
         <span>{item.status === "running" ? "⟳" : item.status === "error" ? "✕" : "✓"}</span>
         <span>{item.status === "running" ? RUNNING_LABEL[item.name] ?? "Working…" : item.result?.message}</span>
       </div>
@@ -296,7 +296,7 @@ function ChatItemView({ item }: { item: ChatItem }) {
         border: "1px solid var(--border)",
         borderRadius: 10,
         padding: "10px 12px",
-        fontSize: 13,
+        fontSize: 14,
       }}
     >
       {item.status === "running" && <div style={{ color: "var(--text-dim)" }}>{RUNNING_LABEL[item.name] ?? "Working…"}</div>}
@@ -305,12 +305,12 @@ function ChatItemView({ item }: { item: ChatItem }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <div style={{ fontWeight: 600 }}>{item.result.message}</div>
           {item.name === "set_queue" && (
-            <Link to="/queue" style={{ color: "var(--accent-2)", fontSize: 12 }}>
+            <Link to="/queue" style={{ color: "var(--accent-2)", fontSize: 13 }}>
               View queue →
             </Link>
           )}
           {(item.name === "create_playlist" || item.name === "add_to_playlist") && item.result.playlist_name && (
-            <Link to={`/playlists/${encodeURIComponent(item.result.playlist_name)}`} style={{ color: "var(--accent-2)", fontSize: 12 }}>
+            <Link to={`/playlists/${encodeURIComponent(item.result.playlist_name)}`} style={{ color: "var(--accent-2)", fontSize: 13 }}>
               Open playlist →
             </Link>
           )}

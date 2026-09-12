@@ -22,10 +22,10 @@ export function GenresPage() {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h1 className="disp" style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+        <h1 className="disp" style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
           Genres
         </h1>
-        <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 4 }}>{genres.length} genres</div>
+        <div style={{ fontSize: 14, color: "var(--text-faint)", marginTop: 4 }}>{genres.length} genres</div>
       </div>
 
       {genres.length === 0 ? (
@@ -36,10 +36,10 @@ export function GenresPage() {
             <button
               key={genre}
               className="btn"
-              style={{ padding: "12px 18px", fontSize: 14 }}
+              style={{ padding: "12px 18px", fontSize: 16 }}
               onClick={() => navigate(`/genres/${encodeURIComponent(genre)}`)}
             >
-              <IconGenre size={15} />
+              <IconGenre size={17} />
               {genre}
             </button>
           ))}

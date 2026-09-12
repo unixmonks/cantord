@@ -61,17 +61,17 @@ export function SearchPage() {
           marginBottom: 32,
         }}
       >
-        <IconSearch size={18} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+        <IconSearch size={20} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
         <input
           autoFocus
           value={query}
           onChange={(e) => handleChange(e.target.value)}
           placeholder="Search albums, artists, tracks…"
-          style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--text)", fontSize: 15 }}
+          style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--text)", fontSize: 17 }}
         />
         {query && (
           <button className="iconbtn" onClick={() => handleChange("")} title="Clear">
-            <IconClose size={14} />
+            <IconClose size={16} />
           </button>
         )}
       </div>
@@ -98,7 +98,7 @@ export function SearchPage() {
                     onClick={() => navigate(`/artists/${encodeURIComponent(name)}`)}
                     style={{ display: "flex", alignItems: "center", padding: "12px 14px", cursor: "pointer" }}
                   >
-                    <span style={{ fontSize: 15, fontWeight: 500 }}>{name}</span>
+                    <span style={{ fontSize: 17, fontWeight: 500 }}>{name}</span>
                   </div>
                 ))}
               </div>
@@ -120,10 +120,10 @@ export function SearchPage() {
                   >
                     <AlbumArt artHash={album.art_hash} seed={album.id} label={album.name} size={52} />
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div style={{ fontSize: 16, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         {album.name}
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+                      <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
                         {album.album_artist}
                         {album.year ? ` · ${album.year}` : ""}
                       </div>

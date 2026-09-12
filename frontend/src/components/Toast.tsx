@@ -14,7 +14,7 @@ export function Toast() {
         border: "1px solid var(--border)",
         borderRadius: 10,
         padding: "10px 18px",
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: 600,
         color: "var(--text)",
         boxShadow: "0 8px 24px rgba(0,0,0,0.35)",

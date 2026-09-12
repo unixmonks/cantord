@@ -27,10 +27,10 @@ export function TrackListPage({ title, emptyMessage, fetcher }: TrackListPagePro
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h1 className="disp" style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+        <h1 className="disp" style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
           {title}
         </h1>
-        <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 4 }}>{tracks.length} tracks</div>
+        <div style={{ fontSize: 14, color: "var(--text-faint)", marginTop: 4 }}>{tracks.length} tracks</div>
       </div>
 
       {loading && <div className="empty-state">Loading…</div>}
