@@ -47,18 +47,26 @@ export function HomePage() {
       </div>
 
       {suggestions.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {suggestions.map((sug) => (
-            <button
-              key={sug.label}
-              className="btn"
-              onClick={() => runAiPrompt(sug.prompt)}
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 13 }}
-            >
-              <IconSparkle size={13} style={{ color: "var(--accent)" }} />
-              {sug.label}
-            </button>
-          ))}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-dim)", marginBottom: 12 }}>
+            <IconSparkle size={14} />
+            <h2 className="disp" style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
+              AI Suggestions
+            </h2>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {suggestions.map((sug) => (
+              <button
+                key={sug.label}
+                className="btn"
+                onClick={() => runAiPrompt(sug.prompt)}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 13 }}
+              >
+                <IconSparkle size={13} style={{ color: "var(--accent)" }} />
+                {sug.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
