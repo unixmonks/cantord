@@ -68,13 +68,13 @@ export function AlbumDetailPage() {
         <IconBack size={14} /> Back
       </div>
 
-      <div style={{ display: "flex", gap: 28, marginBottom: 32 }}>
+      <div className="detail-hero" style={{ display: "flex", gap: 28, marginBottom: 32 }}>
         <AlbumArt artHash={album.art_hash} seed={album.id} label={album.name} size={180} radius={10} />
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+        <div className="detail-hero-info" style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
           <div style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
             Album
           </div>
-          <h1 className="disp" style={{ margin: "0 0 8px", fontSize: 36, fontWeight: 700 }}>
+          <h1 className="disp detail-hero-title" style={{ margin: "0 0 8px", fontSize: 36, fontWeight: 700 }}>
             {album.name}
           </h1>
           <div style={{ fontSize: 15, color: "var(--text-dim)", marginBottom: 4 }}>
@@ -90,7 +90,7 @@ export function AlbumDetailPage() {
           <div style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 20 }}>
             {tracks.length} tracks · {formatDurationLong(totalMs)}
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div className="detail-hero-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button className="btn btn-primary" disabled={busy} onClick={() => enqueueAll(true)}>
               <IconPlay size={13} /> Play album
             </button>

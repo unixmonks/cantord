@@ -64,13 +64,16 @@ export interface ScanProgress {
   processed: number;
   added_or_updated: number;
   skipped_unchanged: number;
-  removed: number;
+  marked_missing: number;
+  marked_available: number;
+  unavailable: number;
   failed: number;
   current_path?: string;
 }
 
 export interface Stats {
   tracks: number;
+  unavailable: number;
   albums: number;
   artists: number;
   total_size_bytes: number;

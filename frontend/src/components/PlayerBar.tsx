@@ -4,6 +4,7 @@ import { usePlayer } from "../state/PlayerContext";
 import { AlbumArt } from "./AlbumArt";
 import { Slider } from "./Slider";
 import { formatDuration } from "../utils/format";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import {
   IconNext,
   IconPause,
@@ -21,6 +22,8 @@ export function PlayerBar() {
   const { status, togglePlayPause, stop, next, previous, seek, setVolume, toggleMute, toggleShuffle, cycleRepeat } =
     usePlayer();
   const navigate = useNavigate();
+  const isNarrow = useMediaQuery("(max-width: 720px)");
+  const isTiny = useMediaQuery("(max-width: 480px)");
 
   const track = status?.track;
   const duration = status?.duration_ms ?? 0;
@@ -58,6 +61,7 @@ export function PlayerBar() {
 
   return (
     <footer
+      className="player-bar"
       style={{
         height: 88,
         flexShrink: 0,
@@ -65,16 +69,33 @@ export function PlayerBar() {
         borderTop: "1px solid var(--border)",
         display: "flex",
         alignItems: "center",
-        padding: "0 24px",
-        gap: 24,
+        padding: isTiny ? "0 12px" : isNarrow ? "0 16px" : "0 24px",
+        gap: isNarrow ? 12 : 24,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 12, width: 280, flexShrink: 0, minWidth: 0 }}>
-        <AlbumArt artHash={track.art_hash} seed={track.album_id || track.album} label={track.album || track.title} size={52} />
+      <div
+        className="player-track-info"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: isTiny ? 8 : 12,
+          width: isNarrow ? "auto" : 280,
+          maxWidth: isTiny ? 130 : isNarrow ? 220 : undefined,
+          flexShrink: 0,
+          minWidth: 0,
+        }}
+      >
+        <AlbumArt
+          artHash={track.art_hash}
+          seed={track.album_id || track.album}
+          label={track.album || track.title}
+          size={isTiny ? 40 : 52}
+        />
         <div style={{ minWidth: 0 }}>
           <div className="disp" style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {track.title}
           </div>
+          {!isTiny && (
           <div style={{ fontSize: 12, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {track.artist && (
               <span
@@ -98,18 +119,21 @@ export function PlayerBar() {
               </>
             )}
           </div>
+          )}
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, maxWidth: 640, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <button
-            className={`iconbtn${status?.shuffle ? " active" : ""}`}
-            onClick={toggleShuffle}
-            title="Shuffle remaining queue"
-          >
-            <IconShuffle size={16} />
-          </button>
+      <div className="player-controls" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, maxWidth: 640, margin: "0 auto" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: isTiny ? 8 : 18 }}>
+          {!isTiny && (
+            <button
+              className={`iconbtn${status?.shuffle ? " active" : ""}`}
+              onClick={toggleShuffle}
+              title="Shuffle remaining queue"
+            >
+              <IconShuffle size={16} />
+            </button>
+          )}
           <button className="iconbtn" onClick={previous} title="Previous">
             <IconPrev size={18} />
           </button>
@@ -134,9 +158,11 @@ export function PlayerBar() {
           <button className="iconbtn" onClick={next} title="Next">
             <IconNext size={18} />
           </button>
-          <button className="iconbtn" onClick={stop} title="Stop">
-            <IconStop size={15} />
-          </button>
+          {!isTiny && (
+            <button className="iconbtn" onClick={stop} title="Stop">
+              <IconStop size={15} />
+            </button>
+          )}
           <button
             className={`iconbtn${status?.repeat && status.repeat !== "off" ? " active" : ""}`}
             onClick={cycleRepeat}
@@ -146,9 +172,11 @@ export function PlayerBar() {
           </button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
-          <span style={{ fontSize: 11, color: "var(--text-faint)", width: 32, textAlign: "right" }}>
-            {formatDuration(dragPos !== null ? dragPos * duration : localPos)}
-          </span>
+          {!isTiny && (
+            <span style={{ fontSize: 11, color: "var(--text-faint)", width: 32, textAlign: "right" }}>
+              {formatDuration(dragPos !== null ? dragPos * duration : localPos)}
+            </span>
+          )}
           <Slider
             value={progressRatio}
             onDragValue={(r) => setDragPos(r)}
@@ -157,11 +185,14 @@ export function PlayerBar() {
               if (duration > 0) seek((r * duration) / 1000);
             }}
           />
-          <span style={{ fontSize: 11, color: "var(--text-faint)", width: 32 }}>{formatDuration(duration)}</span>
+          {!isTiny && <span style={{ fontSize: 11, color: "var(--text-faint)", width: 32 }}>{formatDuration(duration)}</span>}
         </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, width: 160, flexShrink: 0, justifyContent: "flex-end" }}>
+      <div
+        className="player-volume"
+        style={{ display: isNarrow ? "none" : "flex", alignItems: "center", gap: 10, width: 160, flexShrink: 0, justifyContent: "flex-end" }}
+      >
         <button className="iconbtn" onClick={toggleMute} title={status?.muted ? "Unmute" : "Mute"}>
           {status?.muted ? <IconVolumeMuted size={17} /> : <IconVolume size={17} />}
         </button>

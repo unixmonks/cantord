@@ -38,7 +38,7 @@ export function QueuePage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 24 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 24, gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 className="disp" style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
             Queue

@@ -127,6 +127,7 @@ export function AiPanel() {
 
   return (
     <div
+      className="ai-panel"
       style={{
         position: "fixed",
         top: 0,

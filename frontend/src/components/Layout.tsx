@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { PlayerBar } from "./PlayerBar";
 import { Toast } from "./Toast";
 import { AiPanel } from "./AiPanel";
+import { IconMenu } from "./Icons";
 
 // Keyed by route (pathname + search), not history entry, so returning to a
 // page restores its scroll position no matter how you got there — browser
@@ -15,6 +16,11 @@ export function Layout() {
   const mainRef = useRef<HTMLElement>(null);
   const location = useLocation();
   const routeKey = location.pathname + location.search;
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [routeKey]);
 
   useEffect(() => {
     const el = mainRef.current;
@@ -48,10 +54,17 @@ export function Layout() {
   }, [routeKey]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <Sidebar />
-        <main ref={mainRef} style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: "40px 48px 24px" }}>
+    <div className="app-shell">
+      <div className="app-topbar">
+        <button className="iconbtn" onClick={() => setMobileNavOpen(true)} title="Open menu">
+          <IconMenu size={20} />
+        </button>
+        <span className="disp app-topbar-title">cantord</span>
+      </div>
+      <div className="app-body">
+        <Sidebar mobileOpen={mobileNavOpen} onCloseMobile={() => setMobileNavOpen(false)} />
+        {mobileNavOpen && <div className="sidebar-backdrop" onClick={() => setMobileNavOpen(false)} />}
+        <main ref={mainRef} className="app-main">
           <Outlet />
         </main>
       </div>

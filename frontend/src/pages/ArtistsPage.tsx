@@ -37,7 +37,7 @@ export function ArtistsPage() {
       {artists.length === 0 ? (
         <div className="empty-state">No artists yet.</div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 56px", maxWidth: 920 }}>
+        <div className="two-col-list" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 56px", maxWidth: 920 }}>
           <div>
             {left.map((name) => {
               const letter = name[0]?.toUpperCase() ?? "";

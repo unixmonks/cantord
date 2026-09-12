@@ -6,6 +6,14 @@ function base({ size = 18, ...props }: IconProps) {
   return { width: size, height: size, viewBox: "0 0 20 20", ...props };
 }
 
+export function IconMenu(props: IconProps) {
+  return (
+    <svg {...base(props)} fill="none">
+      <path d="M4 5.5h12M4 10h12M4 14.5h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconQueue(props: IconProps) {
   return (
     <svg {...base(props)} fill="none">

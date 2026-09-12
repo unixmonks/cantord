@@ -127,8 +127,8 @@ export function PlaylistDetailPage() {
         <IconBack size={14} /> Back
       </div>
 
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 32 }}>
-        <div>
+      <div className="detail-hero-row" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 32, gap: 16 }}>
+        <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
             Playlist
           </div>
@@ -140,11 +140,11 @@ export function PlaylistDetailPage() {
               onBlur={commitRename}
               onKeyDown={(e) => e.key === "Enter" && commitRename()}
               className="field"
-              style={{ fontSize: 28, fontWeight: 700, padding: "2px 8px", marginBottom: 10, width: 360 }}
+              style={{ fontSize: 28, fontWeight: 700, padding: "2px 8px", marginBottom: 10, width: 360, maxWidth: "100%" }}
             />
           ) : (
             <h1
-              className="disp"
+              className="disp detail-hero-title"
               style={{ margin: "0 0 10px", fontSize: 32, fontWeight: 700, cursor: "text" }}
               onClick={() => setEditingName(true)}
               title="Click to rename"
@@ -155,7 +155,7 @@ export function PlaylistDetailPage() {
           <div style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 20 }}>
             {tracks.length} tracks{totalMs ? ` · ${formatDurationLong(totalMs)}` : ""}
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button className="btn btn-primary" disabled={tracks.length === 0} onClick={playAll}>
               <IconPlay size={13} /> Play all
             </button>
@@ -164,7 +164,7 @@ export function PlaylistDetailPage() {
             </button>
           </div>
         </div>
-        <button className="btn btn-danger" onClick={deletePlaylist}>
+        <button className="btn btn-danger" style={{ flexShrink: 0 }} onClick={deletePlaylist}>
           <IconTrash size={14} /> Delete playlist
         </button>
       </div>

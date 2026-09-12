@@ -47,7 +47,7 @@ export function SettingsPage() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 760 }}>
         <div className="card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, gap: 12, flexWrap: "wrap" }}>
             <h2 className="disp" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
               Connection
             </h2>
@@ -62,9 +62,10 @@ export function SettingsPage() {
           <label style={{ fontSize: 12, color: "var(--text-faint)", display: "block", marginBottom: 6 }}>
             Server address (CANTORD_ADDR)
           </label>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <input
               className="field"
+              style={{ flex: "1 1 220px" }}
               value={addressDraft}
               onChange={(e) => setAddressDraft(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && commitAddress()}
@@ -77,7 +78,7 @@ export function SettingsPage() {
         </div>
 
         <div className="card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, gap: 12, flexWrap: "wrap" }}>
             <h2 className="disp" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
               Library scan
             </h2>
@@ -120,10 +121,11 @@ export function SettingsPage() {
           )}
 
           {scanProgress && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 20, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 20, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
               <Stat label="Added / updated" value={scanProgress.added_or_updated} color="var(--accent)" />
               <Stat label="Unchanged" value={scanProgress.skipped_unchanged} />
-              <Stat label="Removed" value={scanProgress.removed} />
+              <Stat label="Marked missing" value={scanProgress.marked_missing} />
+              <Stat label="Marked available" value={scanProgress.marked_available} />
               <Stat label="Failed" value={scanProgress.failed} color={scanProgress.failed > 0 ? "var(--danger)" : undefined} />
               <Stat label="Total" value={scanProgress.total} />
             </div>
@@ -135,12 +137,13 @@ export function SettingsPage() {
             <h2 className="disp" style={{ margin: "0 0 18px", fontSize: 16, fontWeight: 600 }}>
               Library
             </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 20 }}>
               <Stat label="Tracks" value={stats.tracks} />
               <Stat label="Albums" value={stats.albums} />
               <Stat label="Artists" value={stats.artists} />
+              <Stat label="Unavailable" value={stats.unavailable} color={stats.unavailable > 0 ? "var(--danger)" : undefined} />
             </div>
-            <div style={{ display: "flex", gap: 24, marginTop: 20, paddingTop: 20, borderTop: "1px solid var(--border)", fontSize: 13, color: "var(--text-dim)" }}>
+            <div style={{ display: "flex", gap: 24, marginTop: 20, paddingTop: 20, borderTop: "1px solid var(--border)", fontSize: 13, color: "var(--text-dim)", flexWrap: "wrap" }}>
               <span>{formatBytes(stats.total_size_bytes)} on disk</span>
               <span>{formatDurationLong(stats.total_duration_ms)} of music</span>
             </div>
@@ -155,7 +158,7 @@ function Stat({ label, value, color }: { label: string; value: number; color?: s
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <div className="disp" style={{ fontSize: 22, fontWeight: 600, color: color ?? "var(--text)" }}>
-        {value.toLocaleString()}
+        {(value ?? 0).toLocaleString()}
       </div>
       <div className="section-label">{label}</div>
     </div>

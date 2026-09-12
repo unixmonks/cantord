@@ -247,3 +247,129 @@ select {
     height: 100%;
   }
 }
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 40px 48px 24px;
+}
+
+.app-topbar {
+  display: none;
+}
+
+.app-topbar-title {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 55;
+}
+
+@media (min-width: 861px) {
+  .sidebar-backdrop {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .app-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-elev);
+    flex-shrink: 0;
+  }
+
+  .app-main {
+    padding: 20px 16px 16px;
+  }
+
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  .app-sidebar.open {
+    transform: translateX(0);
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+  }
+}
+
+@media (max-width: 480px) {
+  .app-main {
+    padding: 16px 12px 12px;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .ai-panel {
+    width: 100% !important;
+  }
+}
+
+/* Row actions (favorite/queue/etc.) only reveal on hover, which touch
+   devices never trigger — always show them when there's no hover input. */
+@media (hover: none) {
+  .row-hover .row-actions {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 700px) {
+  .two-col-list {
+    grid-template-columns: 1fr !important;
+  }
+
+  .detail-hero {
+    flex-direction: column;
+    align-items: center !important;
+    text-align: center;
+  }
+
+  .detail-hero-info {
+    align-items: center !important;
+  }
+
+  .detail-hero-actions {
+    justify-content: center;
+  }
+
+  .detail-hero-title {
+    font-size: 26px !important;
+  }
+
+  .detail-hero-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+}

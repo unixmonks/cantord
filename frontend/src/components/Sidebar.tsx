@@ -4,6 +4,7 @@ import {
   IconAlbum,
   IconArtist,
   IconChevronLeft,
+  IconClose,
   IconGenre,
   IconHeart,
   IconHome,
@@ -15,6 +16,7 @@ import {
   IconWifiOff,
 } from "./Icons";
 import { usePlayer } from "../state/PlayerContext";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 
 const NAV_ITEMS = [
   { root: "/", label: "Home", icon: IconHome, exact: true },
@@ -36,17 +38,26 @@ const RESUMABLE_ROOTS = ["/albums", "/artists", "/genres", "/playlists", "/searc
 
 const COLLAPSED_KEY = "sidebarCollapsed";
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
+}
+
+export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
   const { connected, aiPanelOpen, toggleAiPanel } = usePlayer();
   const location = useLocation();
+  const isMobile = useMediaQuery("(max-width: 860px)");
   const [lastPaths, setLastPaths] = useState<Record<string, string>>({});
-  const [collapsed, setCollapsed] = useState(() => {
+  const [collapsedPref, setCollapsedPref] = useState(() => {
     try {
       return localStorage.getItem(COLLAPSED_KEY) === "1";
     } catch {
       return false;
     }
   });
+  // On mobile the sidebar is a full-width overlay drawer, not an icon rail —
+  // the desktop collapse preference doesn't apply there.
+  const collapsed = collapsedPref && !isMobile;
 
   useEffect(() => {
     const current = location.pathname + location.search;
@@ -56,7 +67,7 @@ export function Sidebar() {
   }, [location]);
 
   function toggleCollapsed() {
-    setCollapsed((prev) => {
+    setCollapsedPref((prev) => {
       const next = !prev;
       try {
         localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
@@ -67,8 +78,13 @@ export function Sidebar() {
     });
   }
 
+  function navigateAway() {
+    if (isMobile) onCloseMobile?.();
+  }
+
   return (
     <aside
+      className={`app-sidebar${mobileOpen ? " open" : ""}`}
       style={{
         width: collapsed ? 68 : 240,
         flexShrink: 0,
@@ -97,11 +113,15 @@ export function Sidebar() {
         )}
         <button
           className="iconbtn"
-          onClick={toggleCollapsed}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={isMobile ? onCloseMobile : toggleCollapsed}
+          title={isMobile ? "Close menu" : collapsed ? "Expand sidebar" : "Collapse sidebar"}
           style={{ flexShrink: 0 }}
         >
-          <IconChevronLeft size={16} style={{ transform: collapsed ? "rotate(180deg)" : "none", transition: "transform 0.15s ease" }} />
+          {isMobile ? (
+            <IconClose size={16} />
+          ) : (
+            <IconChevronLeft size={16} style={{ transform: collapsed ? "rotate(180deg)" : "none", transition: "transform 0.15s ease" }} />
+          )}
         </button>
       </div>
       <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -112,6 +132,7 @@ export function Sidebar() {
               key={root}
               to={lastPaths[root] ?? root}
               title={collapsed ? label : undefined}
+              onClick={navigateAway}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -129,7 +150,10 @@ export function Sidebar() {
           );
         })}
         <button
-          onClick={toggleAiPanel}
+          onClick={() => {
+            toggleAiPanel();
+            navigateAway();
+          }}
           title={collapsed ? "Assistant" : undefined}
           style={{
             display: "flex",
