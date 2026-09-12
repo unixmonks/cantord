@@ -597,28 +597,43 @@ func (s *Store) ListRecentlyPlayed(limit int) ([]Track, error) {
 // personalize the home screen's AI quick links. Returns "" if there's no
 // play history matching, rather than an error.
 func (s *Store) TopGenreByHour(hours []int, days int) (string, int, error) {
-	return s.topTrackFieldByHour("genre", hours, days)
+	return s.topTrackFieldByHour("genre", -1, hours, days)
 }
 
 // TopArtistByHour is TopGenreByHour, grouped by artist instead of genre.
 func (s *Store) TopArtistByHour(hours []int, days int) (string, int, error) {
-	return s.topTrackFieldByHour("artist", hours, days)
+	return s.topTrackFieldByHour("artist", -1, hours, days)
+}
+
+// TopGenreByWeekdayHour is TopGenreByHour narrowed to one weekday as well
+// (0=Sunday..6=Saturday, matching SQLite's %w) — a tighter "same time on
+// this day of the week" signal than the hour-only aggregate, meant to be
+// run over a much shorter lookback.
+func (s *Store) TopGenreByWeekdayHour(weekday int, hours []int, days int) (string, int, error) {
+	return s.topTrackFieldByHour("genre", weekday, hours, days)
 }
 
 // topTrackFieldByHour groups play_history within the given lookback window
-// and hours-of-day by the named tracks column and returns the most common
-// non-empty value. field is always one of our own hardcoded column names
-// (never user input), so it's safe to interpolate into the query.
-func (s *Store) topTrackFieldByHour(field string, hours []int, days int) (string, int, error) {
+// and hours-of-day — optionally narrowed to one weekday (0=Sunday..6=
+// Saturday; pass -1 for any day) — by the named tracks column and returns
+// the most common non-empty value. field is always one of our own
+// hardcoded column names (never user input), so it's safe to interpolate
+// into the query.
+func (s *Store) topTrackFieldByHour(field string, weekday int, hours []int, days int) (string, int, error) {
 	if len(hours) == 0 {
 		return "", 0, nil
 	}
 	placeholders := make([]string, len(hours))
-	args := make([]any, 0, len(hours)+1)
+	args := make([]any, 0, len(hours)+2)
 	args = append(args, time.Now().AddDate(0, 0, -days).Unix())
 	for i, h := range hours {
 		placeholders[i] = "?"
 		args = append(args, h)
+	}
+	weekdayClause := ""
+	if weekday >= 0 {
+		weekdayClause = "AND CAST(strftime('%w', h.played_at, 'unixepoch', 'localtime') AS INTEGER) = ?"
+		args = append(args, weekday)
 	}
 	query := fmt.Sprintf(`
 		SELECT t.%s, COUNT(*) AS c
@@ -626,11 +641,12 @@ func (s *Store) topTrackFieldByHour(field string, hours []int, days int) (string
 		JOIN tracks t ON t.id = h.track_id
 		WHERE h.played_at >= ?
 			AND CAST(strftime('%%H', h.played_at, 'unixepoch', 'localtime') AS INTEGER) IN (%s)
+			%s
 			AND t.%s IS NOT NULL AND t.%s != ''
 		GROUP BY t.%s
 		ORDER BY c DESC
 		LIMIT 1
-	`, field, strings.Join(placeholders, ","), field, field, field)
+	`, field, strings.Join(placeholders, ","), weekdayClause, field, field, field)
 
 	var value string
 	var count int
@@ -641,6 +657,128 @@ func (s *Store) topTrackFieldByHour(field string, hours []int, days int) (string
 		return "", 0, err
 	}
 	return value, count, nil
+}
+
+// RecentPlayStreakGenre returns the genre with the most occurrences among
+// the last `n` play events (most recent first, repeats included), plus
+// how many of those plays it accounts for — a "you've been on a run of X"
+// signal distinct from TopGenreByHour's longer, hour-of-day pattern.
+func (s *Store) RecentPlayStreakGenre(n int) (string, int, error) {
+	rows, err := s.db.Query(`
+		SELECT t.genre
+		FROM play_history h
+		JOIN tracks t ON t.id = h.track_id
+		WHERE t.genre IS NOT NULL AND t.genre != ''
+		ORDER BY h.played_at DESC
+		LIMIT ?
+	`, n)
+	if err != nil {
+		return "", 0, err
+	}
+	defer rows.Close()
+
+	counts := map[string]int{}
+	for rows.Next() {
+		var genre string
+		if err := rows.Scan(&genre); err != nil {
+			return "", 0, err
+		}
+		counts[genre]++
+	}
+	if err := rows.Err(); err != nil {
+		return "", 0, err
+	}
+
+	var top string
+	var topCount int
+	for genre, c := range counts {
+		if c > topCount {
+			top, topCount = genre, c
+		}
+	}
+	return top, topCount, nil
+}
+
+// TopArtistOverall returns the artist with the most all-time plays.
+func (s *Store) TopArtistOverall() (string, int, error) {
+	var artist string
+	var count int
+	err := s.db.QueryRow(`
+		SELECT t.artist, COUNT(*) AS c
+		FROM play_history h
+		JOIN tracks t ON t.id = h.track_id
+		WHERE t.artist IS NOT NULL AND t.artist != ''
+		GROUP BY t.artist
+		ORDER BY c DESC
+		LIMIT 1
+	`).Scan(&artist, &count)
+	if err == sql.ErrNoRows {
+		return "", 0, nil
+	}
+	return artist, count, err
+}
+
+// scanOptionalTrack scans a single-track query result where zero rows is
+// an expected, non-error outcome (found=false) rather than sql.ErrNoRows
+// bubbling up to the caller.
+func scanOptionalTrack(row *sql.Row) (Track, bool, error) {
+	t, err := scanTrack(row)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return Track{}, false, nil
+		}
+		return Track{}, false, err
+	}
+	return t, true, nil
+}
+
+// StaleFavorite returns a favorited or highly-rated (4+) track that hasn't
+// been played in the last `days` days — preferring one that's never been
+// played at all — as a nudge back toward something the listener already
+// likes but has drifted away from. found is false when nothing is
+// favorited/rated that highly, or everything's been played recently.
+func (s *Store) StaleFavorite(days int) (Track, bool, error) {
+	cutoff := time.Now().AddDate(0, 0, -days).Unix()
+	row := s.db.QueryRow(`
+		SELECT `+trackColumns+`
+		FROM tracks t `+trackJoins+`
+		LEFT JOIN (SELECT track_id, MAX(played_at) AS last_played FROM play_history GROUP BY track_id) lp ON lp.track_id = t.id
+		WHERE (f.track_id IS NOT NULL OR COALESCE(r.rating, 0) >= 4)
+			AND (lp.last_played IS NULL OR lp.last_played < ?)
+		ORDER BY (lp.last_played IS NULL) DESC, lp.last_played ASC
+		LIMIT 1
+	`, cutoff)
+	return scanOptionalTrack(row)
+}
+
+// UnplayedTrackByArtist returns a track credited to the given artist that
+// has never appeared in play_history — a "deep cut" suggestion for an
+// artist the listener already plays a lot.
+func (s *Store) UnplayedTrackByArtist(artist string) (Track, bool, error) {
+	row := s.db.QueryRow(`
+		SELECT `+trackColumns+`
+		FROM tracks t `+trackJoins+`
+		WHERE t.artist = ?
+			AND NOT EXISTS (SELECT 1 FROM play_history h WHERE h.track_id = t.id)
+		ORDER BY t.album_id, t.disc_no, t.track_no
+		LIMIT 1
+	`, artist)
+	return scanOptionalTrack(row)
+}
+
+// UnplayedRecentlyAdded returns the most recently added track — added
+// within the last `days` days — that has never been played.
+func (s *Store) UnplayedRecentlyAdded(days int) (Track, bool, error) {
+	cutoff := time.Now().AddDate(0, 0, -days).Unix()
+	row := s.db.QueryRow(`
+		SELECT `+trackColumns+`
+		FROM tracks t `+trackJoins+`
+		WHERE t.added_at >= ?
+			AND NOT EXISTS (SELECT 1 FROM play_history h WHERE h.track_id = t.id)
+		ORDER BY t.added_at DESC
+		LIMIT 1
+	`, cutoff)
+	return scanOptionalTrack(row)
 }
 
 // ListGenres returns the distinct, non-empty genre tags present in the
