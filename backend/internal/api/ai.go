@@ -17,6 +17,17 @@ func (s *Server) aiStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// aiSuggestions returns the home screen's quick-link prompts. Empty
+// (rather than an error) when the assistant isn't configured, so the
+// frontend can just hide the section.
+func (s *Server) aiSuggestions(w http.ResponseWriter, r *http.Request) {
+	if !s.ai.Configured() {
+		writeJSON(w, http.StatusOK, []ai.Suggestion{})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.ai.Suggestions())
+}
+
 func (s *Server) listAiConversations(w http.ResponseWriter, r *http.Request) {
 	convs, err := s.lib.ListAiConversations()
 	if err != nil {

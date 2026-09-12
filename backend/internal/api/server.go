@@ -79,6 +79,7 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("POST /api/playlists/{name}/rename", s.renamePlaylist)
 
 	mux.HandleFunc("GET /api/ai/status", s.aiStatus)
+	mux.HandleFunc("GET /api/ai/suggestions", s.aiSuggestions)
 	mux.HandleFunc("GET /api/ai/conversations", s.listAiConversations)
 	mux.HandleFunc("GET /api/ai/conversations/{id}", s.getAiConversation)
 	mux.HandleFunc("DELETE /api/ai/conversations/{id}", s.deleteAiConversation)

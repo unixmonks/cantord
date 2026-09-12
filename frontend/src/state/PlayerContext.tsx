@@ -41,6 +41,9 @@ interface PlayerContextValue {
   showToast: (message: string) => void;
   aiPanelOpen: boolean;
   toggleAiPanel: () => void;
+  aiPrompt: { id: number; text: string } | null;
+  runAiPrompt: (text: string) => void;
+  clearAiPrompt: () => void;
   refreshQueue: () => void;
   refreshStatus: () => void;
   play: () => void;
@@ -79,6 +82,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const toggleAiPanel = useCallback(() => setAiPanelOpen((v) => !v), []);
+  const [aiPrompt, setAiPrompt] = useState<{ id: number; text: string } | null>(null);
+  const aiPromptId = useRef(0);
+  const runAiPrompt = useCallback((text: string) => {
+    setAiPanelOpen(true);
+    setAiPrompt({ id: ++aiPromptId.current, text });
+  }, []);
+  const clearAiPrompt = useCallback(() => setAiPrompt(null), []);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -190,6 +200,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       showToast,
       aiPanelOpen,
       toggleAiPanel,
+      aiPrompt,
+      runAiPrompt,
+      clearAiPrompt,
       refreshQueue,
       refreshStatus,
       play: () => guard(() => api.play()),
@@ -268,6 +281,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       showToast,
       aiPanelOpen,
       toggleAiPanel,
+      aiPrompt,
+      runAiPrompt,
+      clearAiPrompt,
       refreshQueue,
       refreshStatus,
       guard,

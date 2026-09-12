@@ -95,6 +95,11 @@ export interface AiStatus {
   model: string;
 }
 
+export interface AiSuggestion {
+  label: string;
+  prompt: string;
+}
+
 export interface AiConversation {
   id: string;
   title: string;

@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../state/PlayerContext";
-import type { Track } from "../api/types";
+import type { AiSuggestion, Track } from "../api/types";
 import { TrackRow } from "../components/TrackRow";
-import { IconClock, IconHeartFilled } from "../components/Icons";
+import { IconClock, IconHeartFilled, IconSparkle } from "../components/Icons";
 
 export function HomePage() {
-  const { api, libraryVersion, showToast, playFromList } = usePlayer();
+  const { api, libraryVersion, showToast, playFromList, runAiPrompt } = usePlayer();
   const navigate = useNavigate();
   const [recent, setRecent] = useState<Track[]>([]);
   const [played, setPlayed] = useState<Track[]>([]);
   const [favorites, setFavorites] = useState<Track[]>([]);
+  const [suggestions, setSuggestions] = useState<AiSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,6 +26,16 @@ export function HomePage() {
       .finally(() => setLoading(false));
   }, [api, libraryVersion, showToast]);
 
+  // Independent of the load above: quick links are a nice-to-have, so a
+  // failure here shouldn't block (or show a toast over) the rest of Home.
+  useEffect(() => {
+    api
+      .aiStatus()
+      .then((s) => (s.configured ? api.aiSuggestions() : []))
+      .then(setSuggestions)
+      .catch(() => setSuggestions([]));
+  }, [api]);
+
   if (loading) return <div className="empty-state">Loading…</div>;
 
   return (
@@ -34,6 +45,22 @@ export function HomePage() {
           Home
         </h1>
       </div>
+
+      {suggestions.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {suggestions.map((sug) => (
+            <button
+              key={sug.label}
+              className="btn"
+              onClick={() => runAiPrompt(sug.prompt)}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 13 }}
+            >
+              <IconSparkle size={13} style={{ color: "var(--accent)" }} />
+              {sug.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <Section
         title="Recently Added"

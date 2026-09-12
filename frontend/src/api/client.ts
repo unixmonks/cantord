@@ -4,6 +4,7 @@ import type {
   AiMessage,
   AiStatus,
   AiStreamEvent,
+  AiSuggestion,
   Page,
   Playlist,
   RepeatMode,
@@ -270,6 +271,9 @@ export class ApiClient {
   // AI assistant
   aiStatus() {
     return request<AiStatus>(this.baseUrl, "/api/ai/status");
+  }
+  aiSuggestions() {
+    return request<AiSuggestion[]>(this.baseUrl, "/api/ai/suggestions").then(orEmpty);
   }
   listAiConversations() {
     return request<AiConversation[]>(this.baseUrl, "/api/ai/conversations").then(orEmpty);

@@ -26,7 +26,7 @@ const RUNNING_LABEL: Record<string, string> = {
 };
 
 export function AiPanel() {
-  const { api, aiPanelOpen, toggleAiPanel, showToast } = usePlayer();
+  const { api, aiPanelOpen, toggleAiPanel, aiPrompt, clearAiPrompt, showToast } = usePlayer();
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [items, setItems] = useState<ChatItem[]>([]);
   const [input, setInput] = useState("");
@@ -51,6 +51,16 @@ export function AiPanel() {
     return () => abortRef.current?.abort();
   }, []);
 
+  // A quick link on the home screen routes here through PlayerContext
+  // instead of calling the chat API directly, so it runs as a real chat
+  // turn — same streaming reply and tool-call cards a typed message gets.
+  useEffect(() => {
+    if (!aiPrompt) return;
+    send(aiPrompt.text);
+    clearAiPrompt();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiPrompt]);
+
   function nextId() {
     return ++idCounter.current;
   }
@@ -62,10 +72,10 @@ export function AiPanel() {
     setSending(false);
   }
 
-  async function send() {
-    const message = input.trim();
+  async function send(overrideText?: string) {
+    const message = (overrideText ?? input).trim();
     if (!message || sending) return;
-    setInput("");
+    if (overrideText === undefined) setInput("");
     setSending(true);
     setItems((prev) => [...prev, { id: nextId(), kind: "user", text: message }]);
 

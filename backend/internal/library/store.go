@@ -591,6 +591,58 @@ func (s *Store) ListRecentlyPlayed(limit int) ([]Track, error) {
 	return tracks, nil
 }
 
+// TopGenreByHour returns the genre with the most plays, within the last
+// `days` days, among plays that happened during any of the given hours of
+// day (0-23, local time) — e.g. hours 5-10 for "morning". Used to
+// personalize the home screen's AI quick links. Returns "" if there's no
+// play history matching, rather than an error.
+func (s *Store) TopGenreByHour(hours []int, days int) (string, int, error) {
+	return s.topTrackFieldByHour("genre", hours, days)
+}
+
+// TopArtistByHour is TopGenreByHour, grouped by artist instead of genre.
+func (s *Store) TopArtistByHour(hours []int, days int) (string, int, error) {
+	return s.topTrackFieldByHour("artist", hours, days)
+}
+
+// topTrackFieldByHour groups play_history within the given lookback window
+// and hours-of-day by the named tracks column and returns the most common
+// non-empty value. field is always one of our own hardcoded column names
+// (never user input), so it's safe to interpolate into the query.
+func (s *Store) topTrackFieldByHour(field string, hours []int, days int) (string, int, error) {
+	if len(hours) == 0 {
+		return "", 0, nil
+	}
+	placeholders := make([]string, len(hours))
+	args := make([]any, 0, len(hours)+1)
+	args = append(args, time.Now().AddDate(0, 0, -days).Unix())
+	for i, h := range hours {
+		placeholders[i] = "?"
+		args = append(args, h)
+	}
+	query := fmt.Sprintf(`
+		SELECT t.%s, COUNT(*) AS c
+		FROM play_history h
+		JOIN tracks t ON t.id = h.track_id
+		WHERE h.played_at >= ?
+			AND CAST(strftime('%%H', h.played_at, 'unixepoch', 'localtime') AS INTEGER) IN (%s)
+			AND t.%s IS NOT NULL AND t.%s != ''
+		GROUP BY t.%s
+		ORDER BY c DESC
+		LIMIT 1
+	`, field, strings.Join(placeholders, ","), field, field, field)
+
+	var value string
+	var count int
+	if err := s.db.QueryRow(query, args...).Scan(&value, &count); err != nil {
+		if err == sql.ErrNoRows {
+			return "", 0, nil
+		}
+		return "", 0, err
+	}
+	return value, count, nil
+}
+
 // ListGenres returns the distinct, non-empty genre tags present in the
 // library, alphabetized.
 func (s *Store) ListGenres() ([]string, error) {
