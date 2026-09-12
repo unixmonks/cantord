@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+
+	"cantord/internal/events"
 )
 
 // triggerScan kicks off a rescan in the background; progress/completion is
@@ -23,6 +25,22 @@ func (s *Server) triggerScan(w http.ResponseWriter, r *http.Request) {
 // — {"running":false} once a scan finishes or before the first one runs.
 func (s *Server) scanStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, s.scanner.Progress())
+}
+
+// pruneLibrary permanently deletes tracks a scan has marked unavailable
+// (their music dir was reachable and just didn't have the file anymore).
+// Scanning alone never deletes — this is the explicit, user-initiated
+// cleanup step for content that's actually gone rather than a storage
+// hiccup.
+func (s *Server) pruneLibrary(w http.ResponseWriter, r *http.Request) {
+	removed, err := s.lib.PruneUnavailable()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	slog.Info("api: pruned unavailable tracks", "removed", removed)
+	s.bus.Publish(events.Event{Type: "library_changed", Data: map[string]any{"pruned": removed}})
+	writeJSON(w, http.StatusOK, map[string]int{"removed": removed})
 }
 
 func (s *Server) libraryStats(w http.ResponseWriter, r *http.Request) {

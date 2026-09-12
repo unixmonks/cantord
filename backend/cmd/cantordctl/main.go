@@ -61,6 +61,7 @@ func init() {
 		"health":          {cmdHealth, "health"},
 		"scan":            {cmdScan, "scan              (trigger a rescan)"},
 		"scan-status":     {cmdScanStatus, "scan-status"},
+		"prune":           {cmdPrune, "prune             (permanently delete tracks marked unavailable)"},
 		"events":          {cmdEvents, "events            (stream SSE updates until interrupted)"},
 	}
 }
@@ -77,7 +78,7 @@ func usage() {
 		"clear", "remove", "playidx",
 		"playlists", "playlist-save", "playlist-get", "playlist-delete", "playlist-add", "playlist-remove", "playlist-rename",
 		"recent", "recently-played", "genres", "genre", "favorites", "fav", "rate", "stats", "version", "health",
-		"scan", "scan-status", "events",
+		"scan", "scan-status", "prune", "events",
 	} {
 		fmt.Fprintf(os.Stderr, "  %s\n", commands[name].usage)
 	}

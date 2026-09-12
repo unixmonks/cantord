@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -113,6 +114,14 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("migrating schema: %w", err)
 	}
+	// NULL (the default) means available; a timestamp means a scan walked
+	// this track's music dir cleanly and didn't find the file there. Never
+	// set automatically to trigger a delete — see SetAvailability and
+	// PruneUnavailable.
+	if err := addColumnIfMissing(db, "tracks", "missing_since", "INTEGER"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrating schema: %w", err)
+	}
 	return &Store{db: db}, nil
 }
 
@@ -148,7 +157,7 @@ func addColumnIfMissing(db *sql.DB, table, column, decl string) error {
 // not columns on tracks itself) instead of drifting out of sync.
 const trackColumns = `t.id, t.path, t.title, t.artist, t.album, t.album_artist, t.album_id, a.art_hash, t.track_no, t.disc_no,
 	t.year, t.genre, t.duration_ms, t.codec, t.sample_rate, t.bit_depth, t.channels, t.size, t.mtime, t.added_at,
-	CASE WHEN f.track_id IS NULL THEN 0 ELSE 1 END, COALESCE(r.rating, 0)`
+	CASE WHEN f.track_id IS NULL THEN 0 ELSE 1 END, COALESCE(r.rating, 0), t.missing_since`
 
 const trackJoins = `LEFT JOIN favorites f ON f.track_id = t.id LEFT JOIN ratings r ON r.track_id = t.id LEFT JOIN albums a ON a.id = t.album_id`
 
@@ -161,11 +170,14 @@ func scanTrack(rs rowScanner) (Track, error) {
 	var t Track
 	var fav int
 	var artHash sql.NullString
+	var missingSince sql.NullInt64
 	err := rs.Scan(&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.AlbumArtist, &t.AlbumID, &artHash,
 		&t.TrackNo, &t.DiscNo, &t.Year, &t.Genre, &t.DurationMS, &t.Codec, &t.SampleRate, &t.BitDepth,
-		&t.Channels, &t.Size, &t.MTime, &t.AddedAt, &fav, &t.Rating)
+		&t.Channels, &t.Size, &t.MTime, &t.AddedAt, &fav, &t.Rating, &missingSince)
 	t.Favorite = fav != 0
 	t.ArtHash = artHash.String
+	t.Available = !missingSince.Valid
+	t.MissingSince = missingSince.Int64
 	return t, err
 }
 
@@ -201,14 +213,14 @@ func (s *Store) UpsertTrack(t Track) (string, error) {
 	defer tx.Rollback()
 
 	_, err = tx.Exec(`
-		INSERT INTO tracks (id, path, title, artist, album, album_artist, album_id, track_no, disc_no, year, genre, duration_ms, codec, sample_rate, bit_depth, channels, size, mtime, added_at)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		INSERT INTO tracks (id, path, title, artist, album, album_artist, album_id, track_no, disc_no, year, genre, duration_ms, codec, sample_rate, bit_depth, channels, size, mtime, added_at, missing_since)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)
 		ON CONFLICT(path) DO UPDATE SET
 			id=excluded.id, title=excluded.title, artist=excluded.artist, album=excluded.album,
 			album_artist=excluded.album_artist, album_id=excluded.album_id, track_no=excluded.track_no,
 			disc_no=excluded.disc_no, year=excluded.year, genre=excluded.genre, duration_ms=excluded.duration_ms,
 			codec=excluded.codec, sample_rate=excluded.sample_rate, bit_depth=excluded.bit_depth,
-			channels=excluded.channels, size=excluded.size, mtime=excluded.mtime
+			channels=excluded.channels, size=excluded.size, mtime=excluded.mtime, missing_since=NULL
 	`, t.ID, t.Path, t.Title, t.Artist, t.Album, albumArtist, albumID, t.TrackNo, t.DiscNo, t.Year, t.Genre,
 		t.DurationMS, t.Codec, t.SampleRate, t.BitDepth, t.Channels, t.Size, t.MTime, time.Now().Unix())
 	if err != nil {
@@ -252,32 +264,85 @@ func (s *Store) SetAlbumArtIfEmpty(albumID, artHash string) error {
 	return err
 }
 
-// RemoveMissing deletes track rows whose paths are no longer on disk and
-// prunes albums left with zero tracks.
-func (s *Store) RemoveMissing(seenPaths map[string]bool) (removed int, err error) {
-	rows, err := s.db.Query(`SELECT id, path FROM tracks`)
+// SetAvailability reconciles which tracks under root are currently on disk,
+// given the set of paths a completed scan of that root just saw. It never
+// deletes anything: a track not in seen gets missing_since set (only the
+// first time it goes missing, so repeated misses don't reset the clock),
+// and a track in seen has missing_since cleared. Callers must only call
+// this for a root whose walk completed without errors — see the Scanner,
+// which is what makes an unreachable NFS mount leave the library alone
+// instead of wiping it.
+func (s *Store) SetAvailability(root string, seen map[string]bool) (markedMissing, markedAvailable int, err error) {
+	root = filepath.Clean(root)
+	prefix := root + string(filepath.Separator)
+
+	rows, err := s.db.Query(`SELECT id, path, missing_since FROM tracks`)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	var stale []string
+	var toMark, toClear []string
 	for rows.Next() {
 		var id, path string
-		if err := rows.Scan(&id, &path); err != nil {
+		var missingSince sql.NullInt64
+		if err := rows.Scan(&id, &path, &missingSince); err != nil {
 			rows.Close()
-			return 0, err
+			return 0, 0, err
 		}
-		if !seenPaths[path] {
-			stale = append(stale, id)
+		if path != root && !strings.HasPrefix(path, prefix) {
+			continue
 		}
+		if seen[path] {
+			if missingSince.Valid {
+				toClear = append(toClear, id)
+			}
+		} else if !missingSince.Valid {
+			toMark = append(toMark, id)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return 0, 0, err
 	}
 	rows.Close()
 
-	for _, id := range stale {
-		if _, err := s.db.Exec(`DELETE FROM tracks WHERE id = ?`, id); err != nil {
-			return removed, err
+	now := time.Now().Unix()
+	for _, id := range toMark {
+		if _, err := s.db.Exec(`UPDATE tracks SET missing_since = ? WHERE id = ?`, now, id); err != nil {
+			return markedMissing, markedAvailable, err
 		}
-		removed++
+		markedMissing++
 	}
+	for _, id := range toClear {
+		if _, err := s.db.Exec(`UPDATE tracks SET missing_since = NULL WHERE id = ?`, id); err != nil {
+			return markedMissing, markedAvailable, err
+		}
+		markedAvailable++
+	}
+	return markedMissing, markedAvailable, nil
+}
+
+// CountUnavailable returns how many tracks are currently marked missing.
+func (s *Store) CountUnavailable() (int, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM tracks WHERE missing_since IS NOT NULL`).Scan(&n)
+	return n, err
+}
+
+// PruneUnavailable permanently deletes tracks currently marked unavailable
+// and prunes albums left with zero tracks. Scans never do this on their
+// own — it only runs when a user explicitly asks (API/cantordctl prune),
+// since a track going missing might just be a storage hiccup.
+func (s *Store) PruneUnavailable() (removed int, err error) {
+	res, err := s.db.Exec(`DELETE FROM tracks WHERE missing_since IS NOT NULL`)
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	removed = int(n)
+
 	if _, err := s.db.Exec(`
 		UPDATE albums SET track_count = (SELECT COUNT(*) FROM tracks WHERE album_id = albums.id)
 	`); err != nil {
@@ -905,6 +970,9 @@ func (s *Store) Stats() (Stats, error) {
 	if err := s.db.QueryRow(`
 		SELECT COUNT(*), COALESCE(SUM(size), 0), COALESCE(SUM(duration_ms), 0) FROM tracks
 	`).Scan(&st.Tracks, &st.TotalSize, &st.TotalDurationMS); err != nil {
+		return Stats{}, err
+	}
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM tracks WHERE missing_since IS NOT NULL`).Scan(&st.Unavailable); err != nil {
 		return Stats{}, err
 	}
 	if err := s.db.QueryRow(`SELECT COUNT(*) FROM albums`).Scan(&st.Albums); err != nil {

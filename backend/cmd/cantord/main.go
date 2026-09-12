@@ -96,6 +96,7 @@ func main() {
 			return
 		}
 		enricher.RunOnce(ctx)
+		go runPeriodicRescan(ctx, scanner, cfg.Library.RescanEvery)
 		if err := scanner.Watch(ctx, 2*time.Second); err != nil {
 			slog.Warn("library watch stopped", "err", err)
 		}
@@ -109,6 +110,28 @@ func main() {
 	defer cancel()
 	_ = httpServer.Shutdown(shutdownCtx)
 	engine.Shutdown()
+}
+
+// runPeriodicRescan triggers a full library scan on a fixed interval,
+// independent of the fsnotify-driven Watch() rescans — fsnotify only sees
+// local filesystem events, so it never fires for content added by another
+// NFS client or for a mount quietly coming back after being unreachable.
+func runPeriodicRescan(ctx context.Context, scanner *library.Scanner, interval time.Duration) {
+	if interval <= 0 {
+		return
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := scanner.Scan(ctx); err != nil {
+				slog.Warn("periodic rescan failed", "err", err)
+			}
+		}
+	}
 }
 
 func ffprobePath() string {

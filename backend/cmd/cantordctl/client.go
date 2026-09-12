@@ -110,6 +110,7 @@ type Track struct {
 	AddedAt     int64  `json:"added_at"`
 	Favorite    bool   `json:"favorite"`
 	Rating      int    `json:"rating"`
+	Available   bool   `json:"available"`
 }
 
 type Status struct {
@@ -126,6 +127,7 @@ type Status struct {
 
 type Stats struct {
 	Tracks          int   `json:"tracks"`
+	Unavailable     int   `json:"unavailable"`
 	Albums          int   `json:"albums"`
 	Artists         int   `json:"artists"`
 	TotalSize       int64 `json:"total_size_bytes"`
@@ -138,12 +140,14 @@ type SearchResult struct {
 }
 
 type ScanProgress struct {
-	Running        bool   `json:"running"`
-	Total          int    `json:"total"`
-	Processed      int    `json:"processed"`
-	AddedOrUpdated int    `json:"added_or_updated"`
-	Skipped        int    `json:"skipped_unchanged"`
-	Removed        int    `json:"removed"`
-	Failed         int    `json:"failed"`
-	CurrentPath    string `json:"current_path,omitempty"`
+	Running         bool   `json:"running"`
+	Total           int    `json:"total"`
+	Processed       int    `json:"processed"`
+	AddedOrUpdated  int    `json:"added_or_updated"`
+	Skipped         int    `json:"skipped_unchanged"`
+	MarkedMissing   int    `json:"marked_missing"`
+	MarkedAvailable int    `json:"marked_available"`
+	Unavailable     int    `json:"unavailable"`
+	Failed          int    `json:"failed"`
+	CurrentPath     string `json:"current_path,omitempty"`
 }

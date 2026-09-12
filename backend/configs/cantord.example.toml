@@ -10,6 +10,14 @@ music_dirs = ["/home/you/Music"]
 db_path = "~/.local/share/cantord/library.db"
 art_cache_dir = "~/.local/share/cantord/art"
 
+# How often to do a full rescan regardless of filesystem-notify activity.
+# Useful when music_dirs is a network mount (NFS, etc): notify events don't
+# see changes made by other clients, and won't necessarily fire when a mount
+# comes back after being unreachable. A scan never deletes tracks on its own
+# even if a mount is down — it only marks them unavailable — so this is safe
+# to run often; see `cantordctl prune` to actually remove tracks confirmed gone.
+rescan_interval = "15m"
+
 [playback]
 mpv_path = "mpv"
 ipc_socket = "~/.local/share/cantord/mpv.sock"

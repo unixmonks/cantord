@@ -337,8 +337,8 @@ func cmdStats(c *Client, args []string) error {
 	if err := c.get("/api/library/stats", &st); err != nil {
 		return err
 	}
-	fmt.Printf("tracks:   %d\nalbums:   %d\nartists:  %d\nsize:     %.2f GB\nduration: %s\n",
-		st.Tracks, st.Albums, st.Artists, float64(st.TotalSize)/(1<<30), formatDuration(int(st.TotalDurationMS)))
+	fmt.Printf("tracks:      %d\nunavailable: %d\nalbums:      %d\nartists:     %d\nsize:        %.2f GB\nduration:    %s\n",
+		st.Tracks, st.Unavailable, st.Albums, st.Artists, float64(st.TotalSize)/(1<<30), formatDuration(int(st.TotalDurationMS)))
 	return nil
 }
 
@@ -510,8 +510,22 @@ func cmdScanStatus(c *Client, args []string) error {
 	if err := c.get("/api/library/scan/status", &p); err != nil {
 		return err
 	}
-	fmt.Printf("running=%v processed=%d/%d added=%d skipped=%d failed=%d\n",
-		p.Running, p.Processed, p.Total, p.AddedOrUpdated, p.Skipped, p.Failed)
+	fmt.Printf("running=%v processed=%d/%d added=%d skipped=%d marked_missing=%d marked_available=%d unavailable=%d failed=%d\n",
+		p.Running, p.Processed, p.Total, p.AddedOrUpdated, p.Skipped, p.MarkedMissing, p.MarkedAvailable, p.Unavailable, p.Failed)
+	return nil
+}
+
+// cmdPrune permanently deletes tracks the last scan marked unavailable
+// (their music dir was reachable and the file just wasn't there). Scanning
+// never deletes on its own — this is the explicit cleanup step.
+func cmdPrune(c *Client, args []string) error {
+	var out struct {
+		Removed int `json:"removed"`
+	}
+	if err := c.post("/api/library/prune", nil, &out); err != nil {
+		return err
+	}
+	fmt.Printf("removed %d unavailable track(s)\n", out.Removed)
 	return nil
 }
 

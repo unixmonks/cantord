@@ -87,6 +87,7 @@ func (s *Server) Router() http.Handler {
 
 	mux.HandleFunc("POST /api/library/scan", s.triggerScan)
 	mux.HandleFunc("GET /api/library/scan/status", s.scanStatus)
+	mux.HandleFunc("POST /api/library/prune", s.pruneLibrary)
 	mux.HandleFunc("GET /api/library/stats", s.libraryStats)
 	mux.HandleFunc("GET /api/events", s.streamEvents)
 

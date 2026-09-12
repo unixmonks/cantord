@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -25,6 +26,15 @@ type LibraryConfig struct {
 	MusicDirs   []string `toml:"music_dirs"`
 	DBPath      string   `toml:"db_path"`
 	ArtCacheDir string   `toml:"art_cache_dir"`
+
+	// RescanInterval is a Go duration string (e.g. "15m") for a periodic
+	// full rescan that runs regardless of fsnotify activity. fsnotify only
+	// sees local filesystem events, so it won't fire for content added by
+	// another NFS client, or for a mount that quietly comes back after
+	// being unreachable — this is what actually picks those up.
+	RescanInterval string `toml:"rescan_interval"`
+	// RescanEvery is RescanInterval parsed by Load; use this at runtime.
+	RescanEvery time.Duration `toml:"-"`
 }
 
 type PlaybackConfig struct {
@@ -49,8 +59,9 @@ func Default() Config {
 	return Config{
 		Server: ServerConfig{Listen: ":8080"},
 		Library: LibraryConfig{
-			DBPath:      "~/.local/share/cantord/library.db",
-			ArtCacheDir: "~/.local/share/cantord/art",
+			DBPath:         "~/.local/share/cantord/library.db",
+			ArtCacheDir:    "~/.local/share/cantord/art",
+			RescanInterval: "15m",
 		},
 		Playback: PlaybackConfig{
 			MPVPath:   "mpv",
@@ -94,6 +105,10 @@ func Load(path string) (Config, error) {
 
 	if len(cfg.Library.MusicDirs) == 0 {
 		return cfg, fmt.Errorf("library.music_dirs must list at least one directory")
+	}
+
+	if cfg.Library.RescanEvery, err = time.ParseDuration(cfg.Library.RescanInterval); err != nil {
+		return cfg, fmt.Errorf("library.rescan_interval %q: %w", cfg.Library.RescanInterval, err)
 	}
 
 	for _, dir := range []string{filepath.Dir(cfg.Library.DBPath), cfg.Library.ArtCacheDir, filepath.Dir(cfg.Playback.IPCSocket)} {

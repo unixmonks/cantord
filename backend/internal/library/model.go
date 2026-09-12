@@ -25,12 +25,22 @@ type Track struct {
 	AddedAt     int64  `json:"added_at"`
 	Favorite    bool   `json:"favorite"`
 	Rating      int    `json:"rating"`
+
+	// Available is false once a scan walked this track's music directory
+	// cleanly and didn't find the file there anymore (e.g. an NFS mount was
+	// down and has since come back empty, or the file was actually
+	// deleted). The row is kept either way — scans never delete tracks on
+	// their own, see Store.PruneUnavailable — so playback and browsing keep
+	// working from cached metadata even while the backing storage is gone.
+	Available    bool  `json:"available"`
+	MissingSince int64 `json:"missing_since,omitempty"`
 }
 
 // Stats is a whole-library summary — cheap aggregate counts for a client's
 // "about my library" view.
 type Stats struct {
 	Tracks          int   `json:"tracks"`
+	Unavailable     int   `json:"unavailable"`
 	Albums          int   `json:"albums"`
 	Artists         int   `json:"artists"`
 	TotalSize       int64 `json:"total_size_bytes"`

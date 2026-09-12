@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"cantord/internal/art"
@@ -24,14 +25,16 @@ var audioExtensions = map[string]bool{
 // polled via GET /api/library/scan/status and pushed as the scan_progress
 // SSE event.
 type ScanProgress struct {
-	Running        bool   `json:"running"`
-	Total          int    `json:"total"`
-	Processed      int    `json:"processed"`
-	AddedOrUpdated int    `json:"added_or_updated"`
-	Skipped        int    `json:"skipped_unchanged"`
-	Removed        int    `json:"removed"`
-	Failed         int    `json:"failed"`
-	CurrentPath    string `json:"current_path,omitempty"`
+	Running         bool   `json:"running"`
+	Total           int    `json:"total"`
+	Processed       int    `json:"processed"`
+	AddedOrUpdated  int    `json:"added_or_updated"`
+	Skipped         int    `json:"skipped_unchanged"`
+	MarkedMissing   int    `json:"marked_missing"`
+	MarkedAvailable int    `json:"marked_available"`
+	Unavailable     int    `json:"unavailable"`
+	Failed          int    `json:"failed"`
+	CurrentPath     string `json:"current_path,omitempty"`
 }
 
 type Scanner struct {
@@ -41,12 +44,20 @@ type Scanner struct {
 	ffprobePath string
 	musicDirs   []string
 
+	running atomic.Bool
+
 	mu       sync.Mutex
 	progress ScanProgress
+
+	rootMu        sync.Mutex
+	rootReachable map[string]bool // last known reachability per root, for transition-only logging
 }
 
 func NewScanner(store *Store, artStore *art.Store, bus *events.Bus, ffprobePath string, musicDirs []string) *Scanner {
-	return &Scanner{store: store, artStore: artStore, bus: bus, ffprobePath: ffprobePath, musicDirs: musicDirs}
+	return &Scanner{
+		store: store, artStore: artStore, bus: bus, ffprobePath: ffprobePath, musicDirs: musicDirs,
+		rootReachable: make(map[string]bool),
+	}
 }
 
 // Progress returns a snapshot of the current (or most recently finished) scan.
@@ -84,17 +95,26 @@ func (sc *Scanner) countAudioFiles() int {
 
 // Scan walks the configured music directories, upserting any new or
 // changed track into the library store (unchanged files, by size+mtime,
-// are skipped without re-reading tags or re-probing) and removing rows for
-// files that no longer exist. Progress is logged periodically, published
-// on the event bus as scan_progress, and available via Progress().
+// are skipped without re-reading tags or re-probing). For each root whose
+// walk completes without error, tracks it didn't see get marked
+// unavailable and tracks it did see (again) get marked available —
+// scanning never deletes anything, so an unreachable NFS mount (which
+// surfaces as a walk error) leaves that root's library entries untouched
+// instead of wiping them. Progress is logged periodically, published on
+// the event bus as scan_progress, and available via Progress().
 func (sc *Scanner) Scan(ctx context.Context) error {
+	if !sc.running.CompareAndSwap(false, true) {
+		slog.Info("scan: already running, skipping")
+		return nil
+	}
+	defer sc.running.Store(false)
+
 	total := sc.countAudioFiles()
 	slog.Info("scan: starting", "dirs", sc.musicDirs, "total_files", total)
 	sc.setProgress(func(p *ScanProgress) {
 		*p = ScanProgress{Running: true, Total: total}
 	})
 
-	seen := map[string]bool{}
 	lastReport := time.Now()
 
 	report := func(force bool) {
@@ -108,9 +128,20 @@ func (sc *Scanner) Scan(ctx context.Context) error {
 		sc.bus.Publish(events.Event{Type: "scan_progress", Data: snap})
 	}
 
+	var totalMarkedMissing, totalMarkedAvailable int
+
 	for _, root := range sc.musicDirs {
+		seen := map[string]bool{}
+		walkErr := false
+
 		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
+				// Covers both "root doesn't exist" (e.g. an NFS mount that
+				// went away — WalkDir invokes this once for the root path
+				// itself) and a subtree that errors out partway through.
+				// Either way we can't trust this root's seen-set, so it
+				// must not be used to mark anything unavailable below.
+				walkErr = true
 				slog.Warn("scan: walk error", "path", path, "err", err)
 				return nil
 			}
@@ -150,23 +181,60 @@ func (sc *Scanner) Scan(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
+		reachable := !walkErr
+		sc.noteRootReachability(root, reachable)
+		if !reachable {
+			continue
+		}
+
+		markedMissing, markedAvailable, err := sc.store.SetAvailability(root, seen)
+		if err != nil {
+			slog.Warn("scan: reconciling availability", "root", root, "err", err)
+			continue
+		}
+		totalMarkedMissing += markedMissing
+		totalMarkedAvailable += markedAvailable
 	}
 
-	removed, err := sc.store.RemoveMissing(seen)
+	unavailable, err := sc.store.CountUnavailable()
 	if err != nil {
-		slog.Warn("scan: removing missing tracks", "err", err)
+		slog.Warn("scan: counting unavailable tracks", "err", err)
 	}
 
 	final := sc.setProgress(func(p *ScanProgress) {
 		p.Running = false
-		p.Removed = removed
+		p.MarkedMissing = totalMarkedMissing
+		p.MarkedAvailable = totalMarkedAvailable
+		p.Unavailable = unavailable
 		p.CurrentPath = ""
 	})
 
 	slog.Info("scan: complete", "added_or_updated", final.AddedOrUpdated, "skipped_unchanged", final.Skipped,
-		"removed", final.Removed, "failed", final.Failed)
+		"marked_missing", final.MarkedMissing, "marked_available", final.MarkedAvailable,
+		"unavailable", final.Unavailable, "failed", final.Failed)
 	sc.bus.Publish(events.Event{Type: "library_changed", Data: final})
 	return nil
+}
+
+// noteRootReachability logs (once, on transition) when a music dir becomes
+// unreachable or comes back, and publishes it on the event bus so a client
+// can show something more useful than tracks silently going quiet.
+func (sc *Scanner) noteRootReachability(root string, reachable bool) {
+	sc.rootMu.Lock()
+	prev, known := sc.rootReachable[root]
+	sc.rootReachable[root] = reachable
+	sc.rootMu.Unlock()
+
+	if known && prev == reachable {
+		return
+	}
+	if reachable {
+		slog.Info("scan: root reachable", "root", root)
+	} else {
+		slog.Warn("scan: root unreachable, leaving its library entries as-is", "root", root)
+	}
+	sc.bus.Publish(events.Event{Type: "root_reachability", Data: map[string]any{"root": root, "reachable": reachable}})
 }
 
 func (sc *Scanner) processFile(ctx context.Context, path string, size, mtime int64) error {
