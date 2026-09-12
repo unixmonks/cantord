@@ -62,49 +62,6 @@ library and a real Claude API key (see [Features](#features) below):
 
 <img src="docs/screenshots/ai-assistant.png" width="360" alt="AI assistant panel queuing 90s grunge tracks">
 
-### `cantord-tui`
-
-Miller columns for drilling into artists/genres/playlists, a global fuzzy
-search overlay, and the queue view:
-
-<table>
-<tr>
-<td width="33%">
-
-**Artists → Album → Tracks**
-![Miller columns navigation](docs/screenshots/tui/miller-columns.png)
-
-</td>
-<td width="33%">
-
-**Fuzzy search**
-![Fuzzy search overlay](docs/screenshots/tui/search.png)
-
-</td>
-<td width="33%">
-
-**Genres**
-![Genre drill-down](docs/screenshots/tui/genres.png)
-
-</td>
-</tr>
-<tr>
-<td width="33%">
-
-**Queue**
-![Queue view](docs/screenshots/tui/queue.png)
-
-</td>
-<td width="33%">
-
-**Playlists**
-![Playlists view](docs/screenshots/tui/playlists.png)
-
-</td>
-<td width="33%"></td>
-</tr>
-</table>
-
 ## Features
 
 ### Backend (`cantord`)
@@ -147,6 +104,49 @@ search overlay, and the queue view:
   section resumes wherever you left it, not its list root)
 
 ### Terminal (`cantord-tui`)
+
+<table>
+<tr>
+<td width="33%">
+
+**Artists → Album → Tracks**
+![Miller columns navigation](docs/screenshots/tui/miller-columns.png)
+
+</td>
+<td width="33%">
+
+**Albums, filtered**
+![Filtering the albums list](docs/screenshots/tui/filter.png)
+
+</td>
+<td width="33%">
+
+**Genres**
+![Genre drill-down](docs/screenshots/tui/genres.png)
+
+</td>
+</tr>
+<tr>
+<td width="33%">
+
+**Playlists**
+![Playlists view](docs/screenshots/tui/playlists.png)
+
+</td>
+<td width="33%">
+
+**Fuzzy search**
+![Fuzzy search overlay](docs/screenshots/tui/search.png)
+
+</td>
+<td width="33%">
+
+**Live theme switching**
+![Theme picker](docs/screenshots/tui/theme.png)
+
+</td>
+</tr>
+</table>
 
 - Tab bar (Artists, Albums, Genres, Queue, Playlists) with Miller-column
   drill-down in each section — browse artist → album → tracks without
