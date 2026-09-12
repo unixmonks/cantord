@@ -344,7 +344,23 @@ func (c *Client) StreamEvents(ctx context.Context, ch chan<- sseEvent) error {
 	}
 	defer resp.Body.Close()
 
-	scanner := bufio.NewScanner(resp.Body)
+	if err := scanSSE(ctx, resp.Body, ch); err != nil {
+		return err
+	}
+	return io.EOF
+}
+
+type sseEvent struct {
+	name string
+	data string
+}
+
+// scanSSE reads an SSE-framed body and pushes each decoded event onto ch
+// until the body is exhausted or ctx is cancelled. Shared by StreamEvents
+// (the daemon-wide feed, GET, long-lived) and AiChat (one POST's scoped
+// response, short-lived).
+func scanSSE(ctx context.Context, body io.Reader, ch chan<- sseEvent) error {
+	scanner := bufio.NewScanner(body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	var evt sseEvent
 	for scanner.Scan() {
@@ -365,13 +381,56 @@ func (c *Client) StreamEvents(ctx context.Context, ch chan<- sseEvent) error {
 			evt = sseEvent{}
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-	return io.EOF
+	return scanner.Err()
 }
 
-type sseEvent struct {
-	name string
-	data string
+// AiStatusResp mirrors the daemon's /api/ai/status response.
+type AiStatusResp struct {
+	Configured bool   `json:"configured"`
+	Provider   string `json:"provider"`
+	Model      string `json:"model"`
+}
+
+func (c *Client) AiStatus() (AiStatusResp, error) {
+	var st AiStatusResp
+	err := c.get("/api/ai/status", &st)
+	return st, err
+}
+
+// AiChat posts one chat turn to the daemon's assistant and streams the SSE
+// response onto ch until the turn completes or ctx is cancelled — the same
+// framing as StreamEvents, but scoped to this single POST rather than the
+// daemon-wide event bus (see the server's aiChat handler). If the daemon
+// rejects the request outright (not configured, bad conversation id), it
+// responds with a plain JSON error instead of an SSE stream, so that case
+// is checked before handing the body to scanSSE.
+func (c *Client) AiChat(ctx context.Context, conversationID, message string, ch chan<- sseEvent) error {
+	body, err := json.Marshal(map[string]string{"conversation_id": conversationID, "message": message})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/api/ai/chat", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.stream.Do(req)
+	if err != nil {
+		return fmt.Errorf("connecting to %s: %w", c.base, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		data, _ := io.ReadAll(resp.Body)
+		var apiErr struct {
+			Error string `json:"error"`
+		}
+		if json.Unmarshal(data, &apiErr) == nil && apiErr.Error != "" {
+			return fmt.Errorf("%s", apiErr.Error)
+		}
+		return fmt.Errorf("ai chat: status %d", resp.StatusCode)
+	}
+
+	return scanSSE(ctx, resp.Body, ch)
 }

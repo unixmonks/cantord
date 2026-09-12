@@ -32,6 +32,7 @@ type globalKeyMap struct {
 	toggleCover                  key.Binding
 	help                         key.Binding
 	search                       key.Binding
+	aiChat                       key.Binding
 	toggleTabBar                 key.Binding
 	cycleTheme                   key.Binding
 }
@@ -83,6 +84,7 @@ func applyKeyConfig(cfg KeyConfig) {
 
 		help:         bindKeys(cfg.Help, "", "help"),
 		search:       bindKeys(cfg.Search, "", "search"),
+		aiChat:       bindKeys(cfg.AiChat, "", "ai assistant"),
 		toggleTabBar: bindKeys(cfg.ToggleTabBar, "", "toggle tab bar"),
 		cycleTheme:   bindKeys(cfg.CycleTheme, "", "theme"),
 	}

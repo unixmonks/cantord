@@ -41,6 +41,7 @@ type KeyConfig struct {
 	ToggleCover   []string `toml:"toggle_cover"`
 	Help          []string `toml:"help"`
 	Search        []string `toml:"search"`
+	AiChat        []string `toml:"ai_chat"`
 	ToggleTabBar  []string `toml:"toggle_tab_bar"`
 	CycleTheme    []string `toml:"cycle_theme"`
 
@@ -92,6 +93,7 @@ func DefaultKeyConfig() KeyConfig {
 
 		Help:         []string{"?"},
 		Search:       []string{"ctrl+k"},
+		AiChat:       []string{"ctrl+a"},
 		ToggleTabBar: []string{"ctrl+b"},
 		CycleTheme:   []string{"ctrl+t"},
 

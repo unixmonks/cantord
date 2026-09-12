@@ -51,6 +51,13 @@ type Model struct {
 	// searchOverlay is the "ctrl+k" global search popup — see search.go.
 	searchOverlay *searchOverlay
 
+	// aiOverlay is the "ctrl+a" AI assistant chat popup — see ai.go.
+	aiOverlay *aiOverlay
+
+	// aiConfigured mirrors the daemon's /api/ai/status, fetched once at
+	// startup — see loadAiStatus in ai.go.
+	aiConfigured bool
+
 	pendingD bool
 	ddGen    int
 
@@ -103,7 +110,7 @@ func newModel(client *Client, events chan tea.Msg, themeName string) Model {
 	}
 	s, cmd := newArtistsScreen(client)
 	m.tabs[tabArtists] = []screen{s}
-	m.initCmd = tea.Batch(cmd, waitForMsg(events))
+	m.initCmd = tea.Batch(cmd, waitForMsg(events), loadAiStatus(client))
 	return m
 }
 
@@ -643,11 +650,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case aiStatusMsg:
+		m.aiConfigured = msg.configured
+		return m, nil
+
 	case searchResultsMsg:
 		if m.searchOverlay != nil && msg.gen == m.searchOverlay.gen {
 			m.searchOverlay.applyResults(msg.result)
 		}
 		return m, nil
+
+	case aiChatEventMsg:
+		// aiOverlay is kept alive across esc (open just flips to false), so
+		// a turn keeps streaming into the transcript even while hidden —
+		// this only drops events once the whole overlay is gone (there
+		// isn't one, since ctrl+a never discards it once created).
+		if m.aiOverlay == nil {
+			return m, nil
+		}
+		if !msg.ok {
+			m.aiOverlay.streaming = false
+			return m, nil
+		}
+		cmd := m.handleAiEvent(msg.event)
+		return m, tea.Batch(cmd, waitForAiEvent(m.aiOverlay.events))
 	}
 
 	// Anything else (spinner ticks, textinput blink, filter-match results,
@@ -655,6 +681,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.searchOverlay != nil {
 		var cmd tea.Cmd
 		m.searchOverlay.input, cmd = m.searchOverlay.input.Update(msg)
+		return m, cmd
+	}
+	if m.aiOverlay != nil && m.aiOverlay.open {
+		var cmd tea.Cmd
+		m.aiOverlay.input, cmd = m.aiOverlay.input.Update(msg)
 		return m, cmd
 	}
 	if m.prompt != nil {
@@ -731,6 +762,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	if m.searchOverlay != nil {
 		return m.handleSearchKey(msg)
+	}
+
+	if m.aiOverlay != nil && m.aiOverlay.open {
+		return m.handleAiKey(msg)
 	}
 
 	if m.themePicker != nil {
@@ -853,6 +888,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.search):
 		return m, m.startSearch()
 
+	case key.Matches(msg, keys.aiChat):
+		return m, m.toggleAiChat()
+
 	case key.Matches(msg, keys.toggleTabBar):
 		m.showTabBar = !m.showTabBar
 		m.resizeAll()
@@ -889,6 +927,10 @@ func (m Model) View() string {
 
 	if m.searchOverlay != nil {
 		return renderSearchOverlay(m.width, m.height, m.searchOverlay)
+	}
+
+	if m.aiOverlay != nil && m.aiOverlay.open {
+		return renderAiOverlay(m.width, m.height, m.aiOverlay)
 	}
 
 	if m.themePicker != nil {

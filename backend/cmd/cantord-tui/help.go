@@ -36,6 +36,7 @@ func buildHelpSections() {
 	}{
 		{"Navigate", []helpEntry{
 			fromBinding(keys.search),
+			fromBinding(keys.aiChat),
 			fromBinding(keys.into),
 			fromBinding(keys.back),
 			fromBinding(keys.selectItem),
