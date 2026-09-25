@@ -91,14 +91,18 @@ func main() {
 	// live from the moment the daemon starts — a large library's first
 	// scan can take a while and shouldn't be a black box.
 	go func() {
-		if err := scanner.Scan(ctx); err != nil {
-			slog.Error("initial library scan", "err", err)
-			return
+		if cfg.Library.ScanOnStartup {
+			if err := scanner.Scan(ctx); err != nil {
+				slog.Error("initial library scan", "err", err)
+				return
+			}
+			enricher.RunOnce(ctx)
 		}
-		enricher.RunOnce(ctx)
 		go runPeriodicRescan(ctx, scanner, cfg.Library.RescanEvery)
-		if err := scanner.Watch(ctx, 2*time.Second); err != nil {
-			slog.Warn("library watch stopped", "err", err)
+		if cfg.Library.Watch {
+			if err := scanner.Watch(ctx, 2*time.Second); err != nil {
+				slog.Warn("library watch stopped", "err", err)
+			}
 		}
 	}()
 	go enricher.RunPeriodically(ctx, 10*time.Minute)

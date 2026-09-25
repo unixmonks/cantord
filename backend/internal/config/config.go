@@ -35,6 +35,15 @@ type LibraryConfig struct {
 	RescanInterval string `toml:"rescan_interval"`
 	// RescanEvery is RescanInterval parsed by Load; use this at runtime.
 	RescanEvery time.Duration `toml:"-"`
+
+	// AutoScan is the master switch for automatic scanning. When false, Load
+	// turns off ScanOnStartup, Watch and the periodic rescan regardless of
+	// their own settings, so the library only changes on a manual scan.
+	AutoScan bool `toml:"auto_scan"`
+	// ScanOnStartup runs a full scan when the daemon starts.
+	ScanOnStartup bool `toml:"scan_on_startup"`
+	// Watch rescans shortly after fsnotify reports changes under MusicDirs.
+	Watch bool `toml:"watch"`
 }
 
 type PlaybackConfig struct {
@@ -62,6 +71,9 @@ func Default() Config {
 			DBPath:         "~/.local/share/cantord/library.db",
 			ArtCacheDir:    "~/.local/share/cantord/art",
 			RescanInterval: "15m",
+			AutoScan:       true,
+			ScanOnStartup:  true,
+			Watch:          true,
 		},
 		Playback: PlaybackConfig{
 			MPVPath:   "mpv",
@@ -109,6 +121,11 @@ func Load(path string) (Config, error) {
 
 	if cfg.Library.RescanEvery, err = time.ParseDuration(cfg.Library.RescanInterval); err != nil {
 		return cfg, fmt.Errorf("library.rescan_interval %q: %w", cfg.Library.RescanInterval, err)
+	}
+	if !cfg.Library.AutoScan {
+		cfg.Library.ScanOnStartup = false
+		cfg.Library.Watch = false
+		cfg.Library.RescanEvery = 0
 	}
 
 	for _, dir := range []string{filepath.Dir(cfg.Library.DBPath), cfg.Library.ArtCacheDir, filepath.Dir(cfg.Playback.IPCSocket)} {

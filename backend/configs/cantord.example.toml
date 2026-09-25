@@ -16,7 +16,15 @@ art_cache_dir = "~/.local/share/cantord/art"
 # comes back after being unreachable. A scan never deletes tracks on its own
 # even if a mount is down — it only marks them unavailable — so this is safe
 # to run often; see `cantordctl prune` to actually remove tracks confirmed gone.
-rescan_interval = "15m"
+rescan_interval = "15m"   # "0" disables
+
+# Scan the whole library once when the daemon starts.
+scan_on_startup = true
+# Rescan shortly after files change under music_dirs (local filesystem events).
+watch = true
+# Master switch: false turns off all three of the above, so the library only
+# changes when you trigger a scan yourself (web UI, `cantordctl scan`, or POST /api/library/scan).
+auto_scan = true
 
 [playback]
 mpv_path = "mpv"
